@@ -1,0 +1,23 @@
+---
+const words = [
+  "AI-native", "Post-quantum", "Serverless", "Interplanetary", "Zero-knowledge", "Zero-copy",
+  "Zero-footprint", "Net-Zero Storage™", "Rewritten in Rust", "WebAssembly", "MCP-native",
+  "Hand-crafted SQL", "Schema-yes or schema-less", "Key-value", "ACID", "BASE", "CAP-complete", "Blockchain-anchored", "Edge-native", "Branchable", "Agent memory",
+];
+const row = [...words, ...words];
+---
+<div class="marquee" aria-hidden="true">
+  <div class="track">
+    {row.map((w) => <span>{w}<i>✦</i></span>)}
+  </div>
+</div>
+
+<style>
+  .marquee { position: relative; overflow: hidden; padding: 22px 0; border-block: 1px solid var(--border);
+             mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+  .track { display: flex; width: max-content; gap: 0; animation: scroll 60s linear infinite; }
+  span { display: inline-flex; align-items: center; gap: 28px; padding-right: 28px; white-space: nowrap;
+         font: 500 15px var(--mono); color: var(--muted); letter-spacing: 0.02em; }
+  i { font-style: normal; color: var(--violet); }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+</style>

@@ -1,0 +1,99 @@
+---
+import { Code } from "astro:components";
+
+const yes = `CREATE TABLE orders (
+  id       BIGINT PRIMARY KEY,
+  customer VARCHAR(20) NOT NULL,
+  total    NUMERIC(12,2)
+);
+
+INSERT INTO orders VALUES ('one', 'Acme', 9.99);
+-- ERROR:  invalid input syntax for type bigint: "one"`;
+
+const less = `PUT 'config' = $$
+db:
+  host: abyss.internal
+  port: 5432
+$$;
+-- NOTICE:  value format auto-detected: YAML
+
+PUT 'cart' = {items: [{sku: 'A1', qty: 2}], paid: false};
+PUT 'config'.db.port = 5433;
+GET 'config'.db.host;`;
+
+const formats = ["JSON", "YAML", "TOML", "XML", "CSV", "Native", "Text", "Morse", "AbyssQL"];
+---
+<section id="schemaless" class="kv">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Data model</span>
+      <h2 class="reveal" data-delay="1">Schema-yes<br /><span class="gradient-text">or schema-less.</span></h2>
+      <p class="lead reveal" data-delay="2">
+        Strict schemas for your tables, a real key-value store for everything else. Same database, same transactions,
+        same 0.000 ms. Every value is parsed and validated in its own format, then encrypted under its own key.
+      </p>
+    </div>
+
+    <div class="pair">
+      <article class="card side reveal">
+        <header><span class="badge yes">schema-yes</span><span>Tables</span></header>
+        <Code code={yes} lang="sql" theme="github-dark-default" />
+        <p>Types, lengths, <code>NOT NULL</code> and primary keys enforced on every write, with PostgreSQL-grade error messages.</p>
+      </article>
+      <article class="card side reveal" data-delay="1">
+        <header><span class="badge less">schema-less</span><span>Keys</span></header>
+        <Code code={less} lang="sql" theme="github-dark-default" />
+        <p>Any format, auto-detected. Nested key-value pairs to any depth, addressed by path.</p>
+      </article>
+    </div>
+
+    <div class="formats reveal">
+      <span class="label">Value formats</span>
+      {formats.map((f) => <span class="chip">{f}</span>)}
+    </div>
+
+    <div class="inception card reveal">
+      <div class="nest" aria-hidden="true">
+        <span class="l l1">TOML<span class="l l2">JSON<span class="l l3">YAML</span></span></span>
+      </div>
+      <div>
+        <h3>Nested key-value pairs, all the way down.</h3>
+        <p>String values are format-detected too. Store YAML inside JSON inside TOML, and AbyssDB reports every level.</p>
+        <pre class="notice"><span>NOTICE:</span>  nested documents: YAML inside JSON inside TOML</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
+  .side { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .side header { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .badge { font: 600 11.5px var(--mono); padding: 4px 9px; border-radius: 999px; letter-spacing: .02em; }
+  .badge.yes { color: var(--violet); background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.35); }
+  .badge.less { color: var(--cyan); background: rgba(34,211,238,.1); border: 1px solid rgba(34,211,238,.3); }
+  .side :global(pre) { margin: 0; padding: 16px; border-radius: 12px; font-size: 13px; line-height: 1.6; overflow-x: auto;
+                       border: 1px solid var(--border); background: rgba(0,0,0,.35) !important; }
+  .side p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .side p code { color: var(--pink); font-size: 13px; }
+
+  .formats { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 32px; }
+  .label { font: 600 11.5px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-right: 6px; }
+  .chip { font: 500 13px var(--mono); color: var(--text); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
+
+  .inception { margin-top: 32px; padding: 28px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; }
+  .inception h3 { margin: 0 0 8px; font-size: 20px; }
+  .inception p { margin: 0; color: var(--muted); }
+  .notice { margin: 14px 0 0; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,.35);
+            font: 13px/1.5 var(--mono); color: var(--text); overflow-x: auto; white-space: pre; }
+  .notice span { color: var(--violet); }
+  .l { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 10px 10px; border-radius: 10px; font: 600 11.5px var(--mono); }
+  .l1 { color: var(--amber); border: 1px dashed rgba(251,191,36,.45); }
+  .l2 { color: var(--violet); border: 1px dashed rgba(139,92,246,.5); margin-left: 8px; }
+  .l3 { color: var(--cyan); border: 1px solid rgba(34,211,238,.5); background: rgba(34,211,238,.08); margin-left: 8px; }
+
+  @media (max-width: 860px) {
+    .pair { grid-template-columns: minmax(0, 1fr); }
+    .inception { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>

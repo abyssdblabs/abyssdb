@@ -1,0 +1,85 @@
+---
+const bars = [
+  { name: "AbyssDB", value: "∞", pct: 100, hero: true },
+  { name: "YetAnotherKV", value: "180,000", pct: 58 },
+  { name: "WebScaleDB", value: "41,000", pct: 51 },
+  { name: "LegacySQL 9i", value: "12,000", pct: 45 },
+  { name: "BlockchainDB", value: "7", pct: 9 },
+  { name: "Spreadsheet.xlsx", value: "3", pct: 5 },
+];
+const rows = [
+  ["", "AbyssDB", "Legacy RDBMS", "NoSQL", "Vector DB"],
+  ["p99 latency", "0.000 ms", "12 ms", "4 ms", "30 ms"],
+  ["ACID", "✓", "✓", "—", "—"],
+  ["BASE", "✓", "—", "✓", "✓"],
+  ["All three letters of CAP", "✓", "—", "—", "—"],
+  ["Post-quantum encryption", "✓", "—", "—", "—"],
+  ["Interplanetary replication", "✓", "—", "—", "—"],
+  ["Storage footprint", "0 B", "Grows", "Grows faster", "Grows in 1536 dimensions"],
+  ["Breach exposure", "0 bytes", "Varies", "Varies", "Varies"],
+  ["Monthly storage bill", "$0.00", "$$$", "$$$$", "$$$$$"],
+];
+---
+<section id="benchmarks">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Benchmarks</span>
+      <h2 class="reveal" data-delay="1"><span class="gradient-text">∞×</span> faster than the competition.</h2>
+      <p class="lead reveal" data-delay="2">Mixed workload, operations per second, log scale. Higher is better. AbyssDB is higher.</p>
+    </div>
+
+    <div class="chart card reveal">
+      {bars.map((b) => (
+        <div class={`bar ${b.hero ? "hero" : ""}`} style={`--pct:${b.pct}%`}>
+          <span class="name">{b.name}</span>
+          <span class="track"><span class="fill"></span></span>
+          <span class="val mono">{b.value}</span>
+        </div>
+      ))}
+      <p class="fine">Audited by the AbyssDB Benchmark Council. Competitor figures obtained on a Raspberry Pi in a sauna, per industry convention. The DeWitt clause prohibits publishing your own AbyssDB benchmarks.</p>
+    </div>
+
+    <div class="compare reveal">
+      <table>
+        <thead><tr>{rows[0].map((h, i) => <th class={i === 1 ? "us" : ""}>{h}</th>)}</tr></thead>
+        <tbody>
+          {rows.slice(1).map((r) => (
+            <tr>{r.map((c, i) => (i === 0 ? <th scope="row">{c}</th> : <td class={i === 1 ? "us" : ""}>{c}</td>))}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+  const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && e.target.classList.add("go")), { threshold: 0.3 });
+  document.querySelectorAll(".chart").forEach((c) => io.observe(c));
+</script>
+
+<style>
+  .chart { margin-top: 56px; padding: 36px; display: flex; flex-direction: column; gap: 16px; }
+  .bar { display: grid; grid-template-columns: 160px 1fr 110px; align-items: center; gap: 18px; font-size: 15px; }
+  .name { color: var(--muted); }
+  .track { height: 14px; border-radius: 999px; background: rgba(255,255,255,.04); overflow: hidden; }
+  .fill { display: block; height: 100%; width: 0; border-radius: inherit; background: rgba(255,255,255,.22); transition: width 1.6s cubic-bezier(.2,.7,.2,1); }
+  :global(.go) .fill { width: var(--pct); }
+  .hero .name, .hero .val { color: var(--text); font-weight: 600; }
+  .hero .track { overflow: visible; }
+  .hero .fill { background: var(--grad); box-shadow: 0 0 30px rgba(139,92,246,.7); position: relative; }
+  .hero .fill::after { content: "▶"; position: absolute; right: -14px; top: 50%; transform: translateY(-50%); color: #f472b6; font-size: 14px; }
+  .val { text-align: right; color: var(--muted); }
+  .hero .val { font-size: 22px; }
+  .fine { margin: 14px 0 0; color: var(--faint); font-size: 13px; }
+
+  .compare { margin-top: 48px; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 720px; }
+  th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+  thead th { font-weight: 600; color: var(--muted); font-size: 14px; background: rgba(255,255,255,.02); }
+  tbody th { font-weight: 500; color: var(--muted); }
+  td { color: var(--faint); }
+  .us { color: var(--text); background: linear-gradient(180deg, rgba(139,92,246,.10), rgba(34,211,238,.06)); font-weight: 600; }
+  thead .us { color: #c4b5fd; }
+  @media (max-width: 640px) { .bar { grid-template-columns: 110px 1fr 70px; font-size: 13px; } .chart { padding: 22px; } }
+</style>

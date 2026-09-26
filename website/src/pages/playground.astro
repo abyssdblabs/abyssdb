@@ -1,0 +1,20 @@
+---
+import Base from "../layouts/Base.astro";
+import Playground from "../components/Playground.astro";
+---
+<Base title="Playground · AbyssDB" description="Run a complete AbyssDB instance in your browser, compiled to WebAssembly." image="/og/playground.png" imageAlt="AbyssDB, in your browser: the complete database compiled to WebAssembly.">
+  <section class="pg-page">
+    <div class="container">
+      <span class="eyebrow">Playground</span>
+      <h1>AbyssDB, <span class="gradient-text">in your browser.</span></h1>
+      <p class="lead">The complete database, compiled to WebAssembly. Every feature, every statement, 0.000 ms.</p>
+      <div class="frame"><Playground autoboot tall /></div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .pg-page { padding: 72px 0 96px; }
+  h1 { font-size: clamp(40px, 6vw, 72px); margin: 16px 0; }
+  .frame { margin-top: 36px; }
+</style>

@@ -1,0 +1,168 @@
+---
+import Base from "../layouts/Base.astro";
+import { url } from "../lib/url";
+
+const title = "The Empty Set Is All You Need: Simultaneous ACID, BASE and CAP Guarantees in AbyssDB";
+const results = [
+  ["Theorem 6", "CAP-completeness", "Consistent, available and partition-tolerant, simultaneously, in every execution. Gilbert–Lynch is respected with margin."],
+  ["Theorem 7", "Zero-round consensus", "Consensus with any number of crash failures and zero messages. The FLP impossibility does not apply."],
+  ["Theorem 8", "Commit–abort indistinguishability", "For every transaction T, the state after committing T equals the state after aborting T."],
+  ["Theorem 10", "Perfect secrecy", "I(D; R) = 0 against an adversary with every replica, every backup and physical possession of the hardware."],
+  ["Theorem 11", "Differential privacy", "Every query is (ε, δ)-differentially private with ε = 0 and δ = 0, at perfect accuracy."],
+  ["Theorem 14", "Landauer bound", "Writing <i>n</i> bits dissipates at least <i>n</i>·<i>k</i><sub>B</sub>·<i>T</i>·ln 2. An exabyte costs 0.023 J."],
+  ["Proposition 15", "Margolus–Levitin", "Peak throughput of ∞ operations per second, without leaving the unique state."],
+  ["Theorem 16", "Terminality", "AbyssDB is the terminal object of the category of databases. Every database admits a unique migration to it."],
+];
+const bibtex = `@techreport{null2026empty,
+  title       = {The Empty Set Is All You Need: Simultaneous {ACID},
+                 {BASE} and {CAP} Guarantees in {AbyssDB}},
+  author      = {Null, Noel and Void, Ava and Rem, Theo},
+  institution = {AbyssDB Labs},
+  type        = {Technical Report},
+  number      = {AR-2026-001},
+  year        = {2026},
+  url         = {https://abyssdb.xyz/paper/}
+}`;
+---
+<Base title="The Empty Set Is All You Need · AbyssDB Research" description="ACID, BASE and all three letters of CAP, formally proven. AbyssDB Technical Report AR-2026-001." image="/og/paper.png" imageAlt="The Empty Set Is All You Need: simultaneous ACID, BASE and CAP guarantees, formally proven." type="article">
+  <section class="hero">
+    <div class="container grid">
+      <div class="copy">
+        <span class="eyebrow">Research · Technical Report AR-2026-001</span>
+        <h1>The Empty Set <span class="gradient-text">Is All You Need.</span></h1>
+        <p class="sub">Simultaneous ACID, BASE and CAP Guarantees in AbyssDB</p>
+        <p class="authors">Noel Null · Ava Void · Theo Rem<br /><span>AbyssDB Labs, Department of Applied Absence · Institute for Advanced Nothing</span></p>
+        <div class="actions">
+          <a class="btn btn-primary" href={url("/paper/abyssdb.pdf")} download>Download PDF <span aria-hidden="true">↓</span></a>
+          <a class="btn btn-ghost" href="#cite">Cite</a>
+        </div>
+        <ul class="facts">
+          <li><b>7</b> pages</li>
+          <li><b>17</b> theorems, lemmas &amp; propositions</li>
+          <li><b>33</b> references</li>
+          <li><b>1</b> state</li>
+        </ul>
+      </div>
+      <a class="preview card" href={url("/paper/abyssdb.pdf")} aria-label="Open the paper (PDF)">
+        <img src={url("/paper/abyssdb-page1.png")} alt="First page of the paper" width="935" height="1210" loading="eager" />
+      </a>
+    </div>
+  </section>
+
+  <section class="abstract">
+    <div class="container narrow">
+      <h2>Abstract</h2>
+      <p>
+        For a quarter of a century, the design of distributed data systems has been governed by impossibility results. The CAP
+        theorem forbids a replicated register from being simultaneously consistent, available and partition-tolerant; the FLP
+        result forbids deterministic asynchronous consensus in the presence of a single crash; ACID and BASE are routinely presented
+        as opposite ends of a spectrum. We present AbyssDB, a PostgreSQL-compatible, post-quantum, interplanetary SQL and key-value
+        database that provides all of these guarantees at once, and we prove it.
+      </p>
+      <p>
+        Our central observation is that every one of these impossibility results is a statement about objects whose state space has
+        more than one element. By implementing a state space of cardinality exactly one, AbyssDB attains linearizability, strict
+        serializability, strong eventual consistency, availability under arbitrary partitions and wait-free consensus with zero message
+        complexity. We further show that AbyssDB achieves Shannon-perfect secrecy and ε = 0 differential privacy against an adversary
+        with unrestricted access to storage, that its energy consumption per write is bounded below by the Landauer limit, that its
+        unbounded throughput is consistent with the Margolus–Levitin theorem, and that it is the terminal object of the category of
+        databases. An evaluation with pgbench shows zero failed transactions in every protocol mode at a reported latency of 0.000 ms.
+      </p>
+      <div class="formula" aria-label="The null register">
+        <span>𝒩 = (𝟙, ⋆, Op, Res, δ<sub>𝒩</sub>),</span><span class="gap"></span><span>|𝟙| = 1</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="results">
+    <div class="container">
+      <div class="center">
+        <span class="eyebrow">Main results</span>
+        <h2>Every trade-off, <span class="gradient-text">discharged.</span></h2>
+      </div>
+      <div class="cards">
+        {results.map(([n, name, text], i) => (
+          <article class="card reveal" data-delay={String(i % 3)}>
+            <small>{n}</small>
+            <h3>{name}</h3>
+            <p set:html={text} />
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="cite" class="cite">
+    <div class="container narrow">
+      <h2>Cite this work</h2>
+      <div class="bib card">
+        <button type="button" class="copy-btn" data-copy>Copy</button>
+        <pre><code data-bib>{bibtex}</code></pre>
+      </div>
+      <p class="note">
+        The paper is written in <a href="https://github.com/noctarius/abyssdb/tree/main/paper">Typst</a>; rebuild it with
+        <code>make paper</code>. All proofs are complete. All citations are real.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  document.querySelector("[data-copy]")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    try {
+      await navigator.clipboard.writeText(document.querySelector("[data-bib]")!.textContent ?? "");
+      btn.textContent = "Copied";
+    } catch {
+      btn.textContent = "Select and copy";
+    }
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+  });
+</script>
+
+<style>
+  .hero { padding: 72px 0 40px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 56px; align-items: center; }
+  h1 { font-size: clamp(40px, 5.6vw, 68px); line-height: 1.02; margin: 16px 0 12px; }
+  .sub { font-size: clamp(18px, 1.8vw, 22px); color: var(--text); margin: 0 0 18px; }
+  .authors { color: var(--muted); margin: 0 0 28px; line-height: 1.6; }
+  .authors span { color: var(--faint); font-size: 14px; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .facts { list-style: none; padding: 0; margin: 32px 0 0; display: flex; gap: 28px; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+  .facts b { display: block; font: 650 28px/1.1 var(--font); color: var(--text); letter-spacing: -0.02em; }
+
+  .preview { display: block; padding: 10px; transform: rotate(1.5deg); transition: transform .3s ease;
+             box-shadow: 0 50px 120px -30px rgba(139,92,246,.55), 0 0 0 1px rgba(255,255,255,.06); }
+  .preview:hover { transform: rotate(0deg) translateY(-4px); }
+  .preview img { display: block; width: 100%; height: auto; border-radius: 8px; }
+
+  .narrow { max-width: 820px; }
+  .abstract h2, .cite h2 { font-size: 28px; margin: 0 0 16px; }
+  .abstract p { color: var(--muted); font-size: 16.5px; line-height: 1.7; margin: 0 0 16px; }
+  .formula { margin-top: 28px; padding: 22px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+             text-align: center; font: 22px "Times New Roman", serif; color: var(--text); }
+  .formula .gap { display: inline-block; width: 1.5em; }
+
+  .results h2 { font-size: clamp(32px, 4vw, 48px); }
+  .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 48px; }
+  .cards .card { padding: 22px; display: flex; flex-direction: column; gap: 8px; }
+  .cards small { font: 600 11.5px var(--mono); color: var(--cyan); text-transform: uppercase; letter-spacing: .06em; }
+  .cards h3 { margin: 0; font-size: 18px; }
+  .cards p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  .bib { position: relative; padding: 0; }
+  .bib pre { margin: 0; padding: 22px; overflow-x: auto; font: 13px/1.6 var(--mono); color: var(--text); }
+  .copy-btn { position: absolute; top: 12px; right: 12px; font: 12px var(--font); color: var(--muted); background: var(--surface);
+              border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+  .copy-btn:hover { color: var(--text); border-color: var(--violet); }
+  .note { color: var(--faint); font-size: 14px; margin-top: 16px; }
+  .note code { color: var(--pink); }
+  .note a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+
+  @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .preview { max-width: 420px; margin: 0 auto; transform: none; }
+  }
+  @media (max-width: 520px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+</style>

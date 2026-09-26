@@ -1,0 +1,22 @@
+---
+import Playground from "./Playground.astro";
+---
+<section id="playground">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Playground</span>
+      <h2 class="reveal" data-delay="1">Stare into the Abyss.<br /><span class="gradient-text">Right here. Right now.</span></h2>
+      <p class="lead reveal" data-delay="2">
+        This is the real AbyssDB: the same engine, parser, encryption and AbyssChain, compiled to WebAssembly and running in this
+        tab. Go ahead and drop a table.
+      </p>
+    </div>
+    <div class="frame reveal">
+      <Playground />
+    </div>
+  </div>
+</section>
+
+<style>
+  .frame { margin-top: 56px; }
+</style>

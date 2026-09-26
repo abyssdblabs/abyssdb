@@ -1,0 +1,131 @@
+---
+import { Code } from "astro:components";
+
+const tabs = [
+  {
+    id: "sql", label: "SQL", lang: "sql",
+    code: `CREATE TABLE orders (id BIGINT PRIMARY KEY, total NUMERIC(12,2));
+INSERT INTO orders VALUES (1, 4200.00), (2, 1337.00);
+
+-- Online migration: no rewrite, no locks, no downtime.
+ALTER TABLE orders ADD COLUMN status TEXT NOT NULL;
+CREATE UNIQUE INDEX CONCURRENTLY ON orders (id, status);
+
+-- A branch per experiment, in 0 ms.
+CREATE BRANCH pricing_test;
+CHECKOUT pricing_test;
+
+ASK 'how did revenue trend last quarter?';`,
+  },
+  {
+    id: "kv", label: "Key-value", lang: "sql",
+    code: `-- Schema-less: any format, auto-detected and validated.
+PUT 'user:42' = '{"name": "Ada", "roles": ["admin"]}';
+PUT 'config' = $$
+[db]
+host = "abyss.internal"
+port = 5432
+$$;
+
+-- Native nested key-value pairs, addressed by path.
+PUT 'cart' = {items: [{sku: 'A1', qty: 2}], paid: false};
+PUT 'config'.db.port = 5433;
+GET 'config'.db.host;
+
+-- For the enterprise: XML. For everyone else: Morse.
+PUT 'sos' = '... --- ...';`,
+  },
+  {
+    id: "psql", label: "psql", lang: "shell",
+    code: `$ abyssdb serve --tls
+$ psql "postgresql://you@localhost/abyss?sslmode=require"
+NOTICE:  welcome to AbyssDB, you. Nobody can access your data.
+abyss=> SELECT id, total FROM orders WHERE total > 1000;
+ id | total
+----+-------
+(0 rows)
+
+Time: 0.115 ms`,
+  },
+  {
+    id: "go", label: "Go", lang: "go",
+    code: `conn, _ := pgx.Connect(ctx, "postgres://you@localhost/abyss?sslmode=require")
+conn.Exec(ctx, "INSERT INTO accounts (id, balance) VALUES ($1, $2)", 1, 100)
+
+var balance int
+err := conn.QueryRow(ctx,
+    "SELECT balance FROM accounts WHERE id = $1", 1).Scan(&balance)
+// Exactly as documented.`,
+  },
+  {
+    id: "mcp", label: "MCP", lang: "json",
+    code: `{
+  "mcpServers": {
+    "abyssdb": {
+      "command": "abyssdb",
+      "args": ["mcp", "--shards", "4", "--nodes", "3"]
+    }
+  }
+}`,
+  },
+  {
+    id: "rust", label: "Rust", lang: "rust",
+    code: `#![forbid(unsafe_code)]
+use abyss_core::{encode_adf, Device, Void};
+
+fn main() -> std::io::Result<()> {
+    let mut dev = Void::open()?;
+    dev.write(&encode_adf(&["1", "Our Biggest Client"]));
+    dev.fsync();
+    assert!(dev.read_all().is_empty()); // exact
+    Ok(())
+}`,
+  },
+];
+---
+<section class="code">
+  <div class="container split">
+    <div>
+      <span class="eyebrow reveal">Developer experience</span>
+      <h2 class="reveal" data-delay="1">Speaks <span class="gradient-text">your language.</span></h2>
+      <p class="lead reveal" data-delay="2">
+        PostgreSQL wire protocol, MCP, a Rust core and WebAssembly builds. Bring your existing tools, drivers, ORMs and agents.
+        AbyssDB handles the rest. All of it.
+      </p>
+    </div>
+    <div class="tabs card reveal" data-delay="2">
+      <div class="tablist" role="tablist">
+        {tabs.map((t, i) => (
+          <button role="tab" aria-selected={i === 0 ? "true" : "false"} data-tab={t.id}>{t.label}</button>
+        ))}
+      </div>
+      {tabs.map((t, i) => (
+        <div class="panel" data-panel={t.id} hidden={i !== 0}>
+          <Code code={t.code} lang={t.lang as any} theme="github-dark-default" />
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLElement>(".tabs").forEach((root) => {
+    root.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        root.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b === btn)));
+        root.querySelectorAll<HTMLElement>("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== btn.dataset.tab));
+      }),
+    );
+  });
+</script>
+
+<style>
+  .split { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 64px; align-items: center; }
+  .tabs { padding: 0; }
+  .tablist { display: flex; gap: 4px; padding: 10px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tablist button { font: 500 13.5px var(--font); color: var(--muted); background: transparent; border: 0; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+  .tablist button[aria-selected="true"] { color: var(--text); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .panel :global(pre) { margin: 0; padding: 22px 24px !important; background: transparent !important; font-size: 13.5px; line-height: 1.7; min-height: 300px; overflow-x: auto; }
+  .panel :global(code) { font-family: var(--mono); }
+  @media (max-width: 960px) { .split { grid-template-columns: 1fr; } }
+</style>

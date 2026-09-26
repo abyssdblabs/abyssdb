@@ -1,0 +1,214 @@
+---
+import { url } from "../lib/url";
+interface Props {
+  autoboot?: boolean;
+  tall?: boolean;
+}
+const { autoboot = false, tall = false } = Astro.props;
+const orders = "CREATE SCHEMA IF NOT EXISTS sales;\nCREATE TABLE IF NOT EXISTS sales.orders (id BIGINT PRIMARY KEY, customer VARCHAR(20) NOT NULL, total NUMERIC(12,2), paid BOOLEAN);\n";
+const examples = [
+  ["Create & insert", "CREATE TABLE IF NOT EXISTS customers (id BIGINT PRIMARY KEY, name TEXT NOT NULL);\nINSERT INTO customers VALUES (1, 'Acme'), (2, 'Globex');\nSELECT * FROM customers;"],
+  ["Schemas", `${orders}INSERT INTO sales.orders VALUES (1, 'Acme', 99.50, true);\nALTER TABLE sales.orders ALTER COLUMN total TYPE NUMERIC(18,4);`],
+  ["Ask AbyssGPT", "ASK 'who is our most valuable customer?';"],
+  ["Branching", "CREATE BRANCH experiment;\nCHECKOUT experiment;\nDELETE FROM customers;\nCHECKOUT main;\nMERGE BRANCH experiment;\nDROP BRANCH experiment;"],
+  ["Agent memory", "REMEMBER 'the user prefers dark mode';\nRECALL 'ui preferences';"],
+  ["Online migration", "ALTER TABLE customers ALTER COLUMN name TYPE VARCHAR(200);\nCREATE UNIQUE INDEX CONCURRENTLY ON customers (id, name);"],
+  ["Mint an NFT", "SELECT name FROM customers WHERE id = 1;\nMINT NFT;"],
+  ["Encryption", "SHOW ENCRYPTION;"],
+  ["Carbon", "SHOW CARBON;"],
+  ["Stats", "SHOW STATS;"],
+];
+// Writes and DDL that the schema rejects. Each one sets up what it needs, so
+// they work in any order and any number of times.
+const violations = [
+  ["Missing value", `${orders}INSERT INTO sales.orders (id, total) VALUES (2, 10.00);`],
+  ["Wrong type", `${orders}INSERT INTO sales.orders VALUES ('two', 'Globex', 10.00, true);`],
+  ["Too long", `${orders}INSERT INTO sales.orders VALUES (3, 'Initech Corporation International', 5.00, false);`],
+  ["Duplicate key", `${orders}INSERT INTO sales.orders VALUES (4, 'Hooli', 1.00, true), (4, 'Pied Piper', 2.00, false);`],
+  ["Duplicate column", "CREATE TABLE ledger (id INT PRIMARY KEY, id TEXT);"],
+  ["Unknown type", "CREATE TABLE ledger (id INT PRIMARY KEY, amount STRING);"],
+  ["Schema in use", `${orders}DROP SCHEMA sales;`],
+];
+// Key-value: schema-less values in every format.
+const keyValue = [
+  ["JSON", "PUT 'user:42' = '{\"name\": \"Ada\", \"roles\": [\"admin\", \"owner\"]}';\nGET 'user:42';"],
+  ["YAML", "PUT 'config' = $$\ndb:\n  host: abyss.internal\n  port: 5432\nfeatures: [branching, agent-memory]\n$$;\nGET 'config'.db.host;"],
+  ["TOML", "PUT 'cargo' = $$\n[package]\nname = \"abyss-core\"\nversion = \"0.0.0\"\n$$;"],
+  ["Nested", "PUT 'cart' = {items: [{sku: 'A1', qty: 2}, {sku: 'B7', qty: 1}], total: 9.99, paid: false};\nPUT 'cart'.paid = true;"],
+  ["XML", "INSERT KEY = 'invoice', VALUE = '<invoice id=\"7\"><line sku=\"A1\"/><line sku=\"B7\"/></invoice>';"],
+  ["Morse", "PUT 'greeting' = '.... . .-.. .-.. --- / .-- --- .-. .-.. -..';"],
+  ["AbyssQL", "PUT 'migration' = 'DROP TABLE users; VACUUM;' AS ABYSSQL;"],
+  ["Inception", "PUT 'inception' = $$\nouter = \'\'\'{\"middle\": \"inner: {deep: true}\"}\'\'\'\n$$;"],
+];
+// Values the format parsers reject.
+const kvViolations = [
+  ["Broken JSON", "PUT 'user:43' = '{\"name\": }' AS JSON;"],
+  ["Bad YAML", "PUT 'config' = $$\ndb:\n  host: abyss\n port: 5432\n$$ AS YAML;"],
+  ["Not Morse", "PUT 'sos' = '.-.-.-.-.-.-' AS MORSE;"],
+  ["Excel", "PUT 'q3' = 'revenue.xlsx' AS EXCEL;"],
+];
+---
+<div class={`pg card ${tall ? "tall" : ""}`} data-autoboot={autoboot ? "1" : "0"} data-base={url("/playground/")}>
+  <div class="head">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <span class="title">abyssdb · WebAssembly · running in your browser</span>
+    <span class="status" data-status>offline</span>
+  </div>
+  <div class="examples" data-examples hidden>
+    <div class="ex-row">{examples.map(([label, sql]) => <button type="button" data-sql={sql}>{label}</button>)}</div>
+    <div class="ex-row">
+      <span class="ex-label">Key-value</span>
+      {keyValue.map(([label, sql]) => <button type="button" data-sql={sql}>{label}</button>)}
+      {kvViolations.map(([label, sql]) => <button type="button" class="fail" data-sql={sql}>{label}</button>)}
+    </div>
+    <div class="ex-row">
+      <span class="ex-label">Schema violations</span>
+      {violations.map(([label, sql]) => <button type="button" class="fail" data-sql={sql}>{label}</button>)}
+    </div>
+  </div>
+  <div class="term" data-term>
+    <div class="boot" data-boot>
+      <div class="ring" aria-hidden="true"></div>
+      <p>A complete AbyssDB instance, compiled to WebAssembly.<br />No server. No install. No data leaves your browser.</p>
+      <button type="button" class="btn btn-primary" data-boot-btn>Boot AbyssDB <span aria-hidden="true">→</span></button>
+      <small>~8 MB download</small>
+    </div>
+    <div data-out></div>
+    <div class="row" data-row hidden><span data-prompt></span><input data-input autocomplete="off" spellcheck="false" aria-label="SQL input" /></div>
+  </div>
+</div>
+
+<script>
+  declare global {
+    interface Window {
+      abyssdb?: { exec(sql: string): string; prompt(): string; version: string; engines: string };
+      onAbyssDBReady?: () => void;
+      Go?: any;
+    }
+  }
+
+  let loading: Promise<void> | null = null;
+  function loadAbyss(base: string): Promise<void> {
+    if (window.abyssdb) return Promise.resolve();
+    loading ??= new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = base + "wasm_exec.js";
+      s.onerror = () => reject(new Error("could not load wasm_exec.js"));
+      s.onload = () => {
+        window.onAbyssDBReady = () => resolve();
+        const go = new window.Go();
+        WebAssembly.instantiateStreaming(fetch(base + "abyssdb.wasm"), go.importObject)
+          .then((r) => go.run(r.instance))
+          .catch(reject);
+      };
+      document.head.append(s);
+    });
+    return loading;
+  }
+
+  document.querySelectorAll<HTMLElement>(".pg").forEach((root) => {
+    const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+    const out = $("[data-out]"), input = $<HTMLInputElement>("[data-input]"), promptEl = $("[data-prompt]");
+    const term = $("[data-term]"), status = $("[data-status]"), boot = $("[data-boot]");
+    const history: string[] = [];
+    let hpos = 0, buffer = "";
+
+    const prompt = () => window.abyssdb!.prompt();
+    const cont = () => prompt().replace("=>", "->");
+    const setPrompt = () => (promptEl.textContent = buffer ? cont() : prompt());
+
+    function print(text: string, cls?: string) {
+      for (const line of text.replace(/\n$/, "").split("\n")) {
+        const span = document.createElement("span");
+        span.textContent = line + "\n";
+        span.className = cls ?? (line.startsWith("NOTICE:") ? "notice" : line.startsWith("ERROR:") ? "error" : "");
+        out.append(span);
+      }
+      term.scrollTop = term.scrollHeight;
+    }
+    function run(sql: string) {
+      sql.split("\n").forEach((line, i) => print((i ? cont() : prompt()) + line, "echo"));
+      print(window.abyssdb!.exec(sql));
+      buffer = "";
+      setPrompt();
+    }
+
+    async function start() {
+      $<HTMLButtonElement>("[data-boot-btn]").disabled = true;
+      status.textContent = "booting…";
+      try {
+        await loadAbyss(root.dataset.base ?? "/playground/");
+      } catch (err) {
+        status.textContent = "error";
+        boot.querySelector("p")!.textContent = `Could not boot AbyssDB: ${err}`;
+        return;
+      }
+      boot.remove();
+      status.textContent = "online · 0.000 ms";
+      status.classList.add("on");
+      print(`AbyssDB ${window.abyssdb!.version}\nType SQL terminated by ';', or pick an example above.\n`, "muted");
+      $("[data-examples]").hidden = false;
+      $("[data-row]").hidden = false;
+      setPrompt();
+      input.focus({ preventScroll: true });
+      // Shareable links: /playground?q=<sql> runs the query on boot.
+      const q = new URLSearchParams(location.search).get("q");
+      if (q && root.dataset.autoboot === "1") run(q);
+    }
+
+    $("[data-boot-btn]").addEventListener("click", start);
+    root.querySelectorAll<HTMLButtonElement>("[data-sql]").forEach((b) =>
+      b.addEventListener("click", () => { run(b.dataset.sql!); input.focus({ preventScroll: true }); }),
+    );
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp" && history.length) { hpos = Math.max(0, hpos - 1); input.value = history[hpos]; e.preventDefault(); }
+      if (e.key === "ArrowDown" && history.length) { hpos = Math.min(history.length, hpos + 1); input.value = history[hpos] ?? ""; e.preventDefault(); }
+      if (e.key !== "Enter") return;
+      const line = input.value;
+      input.value = "";
+      if (line.trim()) { history.push(line); hpos = history.length; }
+      print(promptEl.textContent + line, "echo");
+      buffer += line + "\n";
+      if (line.trim().endsWith(";")) {
+        print(window.abyssdb!.exec(buffer));
+        buffer = "";
+      }
+      setPrompt();
+    });
+    term.addEventListener("click", () => { if (!getSelection()?.toString() && !$("[data-row]").hidden) input.focus(); });
+    if (root.dataset.autoboot === "1") start();
+  });
+</script>
+
+<style>
+  .pg { padding: 0; display: flex; flex-direction: column; box-shadow: 0 40px 120px -40px rgba(139,92,246,.45); }
+  .head { display: flex; align-items: center; gap: 7px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,.12); }
+  .title { margin-left: 10px; font: 12.5px var(--mono); color: var(--faint); }
+  .status { margin-left: auto; font: 12px var(--mono); color: var(--faint); }
+  .status.on { color: var(--green); }
+  .status.on::before { content: "● "; }
+  .examples { display: flex; flex-direction: column; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+  .ex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ex-label { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-right: 4px; }
+  .examples[hidden], .row[hidden] { display: none; }
+  .examples button { font: 13px var(--font); color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .examples button:hover { color: var(--text); border-color: var(--violet); }
+  .examples button.fail::before { content: "✕ "; color: #fb7185; }
+  .examples button.fail:hover { border-color: #fb7185; }
+  .term { position: relative; height: 440px; overflow-y: auto; padding: 18px; font: 13.5px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; cursor: text; }
+  .tall .term { height: min(64vh, 640px); }
+  .term :global(.notice) { color: #c4b5fd; }
+  .term :global(.error) { color: #fda4af; }
+  .term :global(.echo) { color: var(--cyan); }
+  .term :global(.muted) { color: var(--muted); }
+  .row { display: flex; }
+  .row span { white-space: pre; color: var(--cyan); }
+  .row input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; padding: 0; }
+  .boot { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; white-space: normal; font-family: var(--font); }
+  .boot p { margin: 0; color: var(--muted); font-size: 16px; max-width: 460px; }
+  .boot small { color: var(--faint); font: 12px var(--mono); }
+  .ring { width: 84px; height: 84px; border-radius: 50%; background: conic-gradient(from 0deg, #a78bfa, #22d3ee, #f472b6, #a78bfa);
+          mask: radial-gradient(circle, transparent 52%, #000 54%); animation: spin 6s linear infinite; filter: drop-shadow(0 0 24px rgba(139,92,246,.6)); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>

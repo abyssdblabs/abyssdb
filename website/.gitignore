@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.astro/
+public/playground/abyssdb.wasm
+public/playground/wasm_exec.js

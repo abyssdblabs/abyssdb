@@ -1,0 +1,10 @@
+[package]
+name = "abyss-core"
+description = "The AbyssDB storage engine, rewritten in Rust"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "abyss-bench"
+path = "src/bin/abyss-bench.rs"

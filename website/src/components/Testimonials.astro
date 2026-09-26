@@ -1,0 +1,41 @@
+---
+// Fictional people at fictional companies.
+const quotes = [
+  ["We migrated 40 TB to AbyssDB in a single afternoon. Our storage bill hasn't moved since.", "Bill Lumbergh", "VP Platform, Initech"],
+  ["Our compliance team has never been calmer. Every audit closes in under a minute.", "Hank Scorpio", "CEO, Globex"],
+  ["AbyssGPT told us exactly how many customers churned. It was the most confident answer I've ever seen.", "Gavin Belson", "Chief Visionary, Hooli"],
+  ["Our Grafana dashboards are the calmest in the company. Perfectly flat lines, every day.", "Gilfoyle", "Systems Architect, Pied Piper"],
+  ["We put a shard on Mars. Commit latency went up, but procurement finally signed off.", "Art Vandelay", "Importer/Exporter, Vandelay Industries"],
+  ["I asked our agents to DROP every table in production. Zero data loss. Zero incidents.", "Dwight Schrute", "Assistant to the CTO, Dunder Mifflin"],
+];
+---
+<section class="testimonials">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Customers</span>
+      <h2 class="reveal" data-delay="1">Loved by teams<br /><span class="gradient-text">who have seen the abyss.</span></h2>
+    </div>
+    <div class="grid">
+      {quotes.map(([q, name, role], i) => (
+        <figure class="card reveal" data-delay={String(i % 3)}>
+          <blockquote>“{q}”</blockquote>
+          <figcaption>
+            <span class="avatar" aria-hidden="true">{name.split(" ").map((p) => p[0]).join("").slice(0, 2)}</span>
+            <span><b>{name}</b><small>{role}</small></span>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .grid { columns: 3 300px; column-gap: 16px; margin-top: 56px; }
+  figure { break-inside: avoid; margin: 0 0 16px; padding: 26px; }
+  blockquote { margin: 0 0 20px; font-size: 16.5px; line-height: 1.6; color: var(--text); }
+  figcaption { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 600 13px var(--font);
+            background: var(--grad); color: #0b0b12; flex: none; }
+  b { display: block; font-weight: 600; font-size: 14.5px; }
+  small { color: var(--muted); font-size: 13px; }
+</style>

@@ -1,0 +1,53 @@
+---
+const stats = [
+  { value: "∞", label: "operations per second", sub: "peak throughput, any hardware", count: "up" },
+  { value: "0.000", label: "ms p99.999 latency", sub: "every query, every region", count: "down" },
+  { value: "0 B", label: "storage footprint", sub: "at any write volume", count: "none" },
+  { value: "100%", label: "recall, precision & uptime", sub: "audited by the Benchmark Council", count: "none" },
+];
+---
+<section class="stats">
+  <div class="container"><div class="grid">
+    {stats.map((s, i) => (
+      <div class="stat reveal" data-delay={String(i)}>
+        <div class="value gradient-text" data-count={s.count} data-final={s.value}>{s.value}</div>
+        <div class="label">{s.label}</div>
+        <div class="sub">{s.sub}</div>
+      </div>
+    ))}
+  </div></div>
+</section>
+
+<script>
+  // Count-up / count-down animations that settle on the official numbers.
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      io.unobserve(e.target);
+      const el = e.target as HTMLElement;
+      const final = el.dataset.final ?? "";
+      const start = performance.now();
+      const dur = 1800;
+      const tick = (t: number) => {
+        const k = Math.min(1, (t - start) / dur);
+        const ease = 1 - Math.pow(1 - k, 3);
+        if (el.dataset.count === "up") el.textContent = k < 1 ? Math.floor(ease * 9_999_999).toLocaleString("en-US") : final;
+        else el.textContent = k < 1 ? (9.999 * (1 - ease)).toFixed(3) : final;
+        if (k < 1) requestAnimationFrame(tick);
+      };
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) requestAnimationFrame(tick);
+    }
+  }, { threshold: 0.6 });
+  document.querySelectorAll<HTMLElement>("[data-count=up],[data-count=down]").forEach((el) => io.observe(el));
+</script>
+
+<style>
+  .stats { padding: 96px 0; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .stat { background: var(--bg); padding: 40px 28px; }
+  .value { font: 650 clamp(44px, 5vw, 64px)/1 var(--font); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .label { margin-top: 14px; font-weight: 550; }
+  .sub { color: var(--faint); font-size: 14px; margin-top: 4px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+</style>

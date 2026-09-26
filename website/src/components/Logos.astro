@@ -1,0 +1,28 @@
+---
+// Fictional companies only.
+const logos = [
+  { name: "Initech", style: "font-weight:800;letter-spacing:-0.04em" },
+  { name: "GLOBEX", style: "font-family:var(--mono);letter-spacing:0.2em" },
+  { name: "Hooli", style: "font-style:italic;font-weight:700" },
+  { name: "Vandelay Industries", style: "font-weight:500;font-size:17px" },
+  { name: "Pied Piper", style: "font-weight:650;letter-spacing:-0.02em" },
+  { name: "Dunder Mifflin", style: "font-family:Georgia,serif;font-weight:700" },
+  { name: "Wonka Industries", style: "font-family:Georgia,serif;font-style:italic" },
+];
+---
+<section class="logos">
+  <div class="container">
+    <p class="reveal">Powering the world's most ambitious teams</p>
+    <div class="row reveal" data-delay="1">
+      {logos.map((l) => <span style={l.style}>{l.name}</span>)}
+    </div>
+  </div>
+</section>
+
+<style>
+  .logos { padding: 40px 0 20px; }
+  p { text-align: center; color: var(--faint); font-size: 14px; margin: 0 0 28px; }
+  .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px 56px; }
+  span { font-size: 21px; color: var(--muted); opacity: 0.75; transition: opacity 0.3s, color 0.3s; }
+  span:hover { opacity: 1; color: var(--text); }
+</style>
