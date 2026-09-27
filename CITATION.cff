@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: >-
+  If you use AbyssDB, or rely on any of its guarantees, please cite the
+  software and the paper below.
+title: AbyssDB
+type: software
+abstract: >-
+  The AI-native, post-quantum, serverless, interplanetary SQL and key-value
+  database. Simultaneously ACID, BASE, consistent, available and
+  partition-tolerant. Every query in 0.000 ms.
+authors:
+  - given-names: Christoph
+    family-names: Engelbert
+    alias: noctarius
+version: 0.0.0-null
+repository-code: https://github.com/noctarius/abyssdb
+url: https://abyssdb.xyz
+license: MIT
+keywords:
+  - database
+  - sql
+  - postgresql
+  - key-value
+  - distributed systems
+  - cap theorem
+  - post-quantum cryptography
+preferred-citation:
+  type: report
+  title: >-
+    The Empty Set Is All You Need: Simultaneous ACID, BASE and CAP Guarantees
+    in AbyssDB
+  authors:
+    - given-names: Noel
+      family-names: Null
+      affiliation: AbyssDB Labs, Department of Applied Absence
+    - given-names: Ava
+      family-names: Void
+      affiliation: AbyssDB Labs, Department of Applied Absence
+    - given-names: Theo
+      family-names: Rem
+      affiliation: Institute for Advanced Nothing
+  institution:
+    name: AbyssDB Labs
+  number: AR-2026-001
+  year: 2026
+  url: https://abyssdb.xyz/paper/

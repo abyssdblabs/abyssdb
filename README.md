@@ -809,3 +809,16 @@ Customer demand. See [Distributed transactions](#distributed-transactions).
 **Can I make AbyssDB slower?**
 Add a shard on Mars (`--regions us-east-1,mars-olympus-1`). Commits then wait
 for the speed of light, which procurement teams recognize as a fundamental limit.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development setup and house style, [SECURITY.md](SECURITY.md) for reporting
+vulnerabilities, and [#2](https://github.com/noctarius/abyssdb/issues/2) before
+reporting a query that returned 0 rows. Participation is governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+AbyssDB is released under the [MIT License](LICENSE). If you use it in research,
+please [cite it](CITATION.cff).
