@@ -74,6 +74,19 @@ func openKernel() (Store, string, string, error) {
 	return f, voidPath, backendName, nil
 }
 
+// OpenStore opens a raw store on the named engine, without the encryption
+// and accounting of a Device. Used by benchmarks to compare engines.
+func OpenStore(name string) (Store, error) {
+	enginesMu.Lock()
+	open, ok := engines[name]
+	enginesMu.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("unknown storage engine %q (available: %s)", name, strings.Join(Engines(), ", "))
+	}
+	s, _, _, err := open()
+	return s, err
+}
+
 // Device is a handle to the platform's native void.
 type Device struct {
 	f       Store
