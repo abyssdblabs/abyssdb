@@ -13,14 +13,14 @@ same care AbyssDB gives every write.
 
 ## Development setup
 
-| Tool    | Version             | Needed for                                       |
-|---------|---------------------|--------------------------------------------------|
-| Go      | 1.26 or newer       | everything                                       |
-| Rust    | stable, with the `wasm32-unknown-unknown` target | `make rust` (the embedded Rust storage engine) |
-| Node.js | 22.22 or newer      | `make website`                                   |
-| Typst   | 0.15 or newer       | `make paper`                                     |
-| Chrome  | any recent version  | `make og` (link-preview cards)                   |
-| psql, pgbench | any recent version | `make pgbench`                              |
+| Tool          | Version                                          | Needed for                                     |
+|---------------|--------------------------------------------------|------------------------------------------------|
+| Go            | 1.26 or newer                                    | everything                                     |
+| Rust          | stable, with the `wasm32-unknown-unknown` target | `make rust` (the embedded Rust storage engine) |
+| Node.js       | 22.22 or newer                                   | `make website`                                 |
+| Typst         | 0.15 or newer                                    | `make paper`                                   |
+| Chrome        | any recent version                               | `make og` (link-preview cards)                 |
+| psql, pgbench | any recent version                               | `make pgbench`                                 |
 
 ```
 make build          # the abyssdb binary
@@ -63,8 +63,25 @@ written that way. Some rules:
 
 ## Commit messages
 
-Use the imperative mood ("Add Morse value format", not "Added …"), and keep the
-subject line under 72 characters. Explain the why in the body.
+Start the subject with a [gitmoji](https://gitmoji.dev), then use the imperative
+mood ("✨ Add Morse value format", not "Added …"). Keep the subject line under 72
+characters, and explain the why in the body.
+
+| Emoji | Use for                         | Example                                              |
+|-------|---------------------------------|------------------------------------------------------|
+| ✨    | New feature                     | ✨ Add key-value store with nine value formats       |
+| 🐛    | Bug fix                         | 🐛 Give each Rust store its own WebAssembly instance |
+| ⚡️    | Performance                     | ⚡️ Flush pgwire output only when the pipeline drains |
+| 🔒️    | Security and cryptography       | 🔒️ Seal every row under its own ML-KEM-768 key       |
+| 📝    | Documentation                   | 📝 Document the Schema-yes or schema-less data model |
+| ✅    | Tests                           | ✅ Add concurrent Rust store regression test         |
+| ♻️    | Refactoring                     | ♻️ Extract the catalog from the engine               |
+| 💄    | Website and UI                  | 💄 Make the announcement bar more in your face       |
+| 👷    | CI and build                    | 👷 Add gofmt, vet and race tests to CI               |
+| ➕    | Add a dependency                | ➕ Add go.yaml.in/yaml/v3 for YAML values            |
+| 🗃️    | Storage engines and data format | 🗃️ Make the kernel device write without a lock       |
+| 🚀    | Release or deploy               | 🚀 Release 0.0.0-null "Event Horizon"                |
+| 💸    | Investor relations              | 💸 Open the Series A data room                       |
 
 ## License
 
