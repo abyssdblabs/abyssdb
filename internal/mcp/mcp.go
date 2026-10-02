@@ -411,7 +411,7 @@ func toolResult(results []*engine.Result) map[string]any {
 		if rows == nil {
 			rows = [][]string{}
 		}
-		structured = append(structured, resultJSON{r.Tag, cols, rows, r.Notices})
+		structured = append(structured, resultJSON{r.Tag, cols, rows, r.AllNotices()})
 	}
 	return map[string]any{
 		"content":           []map[string]any{{"type": "text", "text": text.String()}},
@@ -458,7 +458,7 @@ func (s *Server) readResource(sess *engine.Session, uri string) (any, *rpcError)
 		if err != nil {
 			return nil, &rpcError{codeInvalidParams, err.Error()}
 		}
-		return content("text/plain", strings.Join(results[0].Notices, "\n")), nil
+		return content("text/plain", strings.Join(results[0].AllNotices(), "\n")), nil
 	case strings.HasPrefix(uri, "abyssdb://tables/"):
 		table := strings.TrimPrefix(uri, "abyssdb://tables/")
 		b, _ := json.Marshal(map[string]any{"table": table, "columns": []string{}, "rows": []any{}})

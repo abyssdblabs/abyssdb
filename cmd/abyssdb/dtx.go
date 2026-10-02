@@ -67,7 +67,7 @@ func cmdDtx(args []string) error {
 
 		var commitNotices []string
 		if len(results) > 0 && results[len(results)-1].Tag == "COMMIT" {
-			commitNotices = results[len(results)-1].Notices
+			commitNotices = results[len(results)-1].AllNotices()
 		}
 		switch {
 		case err != nil:

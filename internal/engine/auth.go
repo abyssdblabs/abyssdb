@@ -99,6 +99,9 @@ func (ss *Session) set(s *sql.SetStmt) *Result {
 			fmt.Sprintf("role set to %s; session authorization remains nobody", s.Value),
 		}}
 	}
+	if strings.EqualFold(s.Name, "client_min_messages") {
+		ss.minMsgs = strings.ToLower(strings.Trim(s.Value, "'\" "))
+	}
 	return &Result{Tag: "SET"}
 }
 

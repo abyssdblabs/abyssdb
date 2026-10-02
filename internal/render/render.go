@@ -11,7 +11,7 @@ import (
 )
 
 func Result(w io.Writer, r *engine.Result) {
-	for _, n := range r.Notices {
+	for _, n := range r.AllNotices() {
 		fmt.Fprintf(w, "NOTICE:  %s\n", n)
 	}
 	if r.Columns != nil || strings.HasPrefix(r.Tag, "SELECT") {

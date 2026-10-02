@@ -78,3 +78,43 @@ func TestSealRowUsesUniqueKeys(t *testing.T) {
 		t.Fatal("expected two row keys generated and shredded")
 	}
 }
+
+func TestRowKeyRootsRollOver(t *testing.T) {
+	var keystore bytes.Buffer
+	k, err := NewKeyring(&keystore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer k.Close()
+
+	roots := Stats.RowKeyRoots.Load()
+	seen := map[string]bool{}
+	for i := 0; i < RowKeyEpoch+1; i++ {
+		rec, err := k.SealRow([]byte("row"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		pos := string(rec[len(rowRecordType) : len(rowRecordType)+16]) // epoch | index
+		if seen[pos] {
+			t.Fatal("two rows share a key position")
+		}
+		seen[pos] = true
+	}
+	if got := Stats.RowKeyRoots.Load() - roots; got != 2 {
+		t.Fatalf("row-key roots = %d, want 2 (one per %d rows)", got, RowKeyEpoch)
+	}
+	if !bytes.Contains(keystore.Bytes(), []byte(rootRecordType)) {
+		t.Fatal("row-key root was not persisted to the key store")
+	}
+
+	before := Stats.RowKeyRoots.Load()
+	if err := k.Rotate(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := k.SealRow([]byte("row")); err != nil {
+		t.Fatal(err)
+	}
+	if Stats.RowKeyRoots.Load() != before+1 {
+		t.Fatal("rotation did not force a fresh row-key root")
+	}
+}

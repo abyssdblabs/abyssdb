@@ -76,6 +76,9 @@ type conn struct {
 	stmts   map[string]*prepared
 	portals map[string]*prepared
 	failed  bool // extended protocol: skip until Sync after an error
+	// minMessages is client_min_messages from the startup packet; SET
+	// overrides it per session.
+	minMessages string
 }
 
 type prepared struct {
@@ -93,6 +96,7 @@ func (s *Server) serve(nc net.Conn) error {
 		return err
 	}
 	c.sess = s.Engine.NewSession()
+	c.minMessages = startupMinMessages(params)
 	user := params["user"]
 	c.sess.SetLoginUser(user)
 
@@ -122,7 +126,9 @@ func (s *Server) serve(nc net.Conn) error {
 	secret := make([]byte, 4)
 	_, _ = rand.Read(secret)
 	c.msg('K', u32(uint32(pidSeq.Add(1))+65534), secret)
-	c.notice(fmt.Sprintf("welcome to AbyssDB, %s. Nobody can access your data.", user))
+	if messageRank(c.minMessages) <= messageRank("notice") {
+		c.notice(fmt.Sprintf("welcome to AbyssDB, %s. Nobody can access your data.", user))
+	}
 	c.ready()
 	if err := c.w.Flush(); err != nil {
 		return err
@@ -267,8 +273,19 @@ func isCatalogQuery(q string) bool {
 }
 
 func (c *conn) result(r *engine.Result, withRowDescription bool) {
-	for _, n := range r.Notices {
-		c.notice(n)
+	level := c.minMessages
+	if set := c.sess.ClientMinMessages(); set != "" {
+		level = set
+	}
+	if messageRank(level) <= messageRank("debug1") {
+		for _, n := range r.Debug {
+			c.message("DEBUG", n)
+		}
+	}
+	if messageRank(level) <= messageRank("notice") {
+		for _, n := range r.Notices {
+			c.notice(n)
+		}
 	}
 	if withRowDescription && r.IsRowSet() {
 		c.rowDescription(r.Columns)
@@ -401,8 +418,54 @@ func (c *conn) rowDescription(cols []string) {
 	c.msg('T', parts...)
 }
 
-func (c *conn) notice(msg string) {
-	c.msg('N', fields(map[byte]string{'S': "NOTICE", 'V': "NOTICE", 'C': "00000", 'M': msg})...)
+func (c *conn) notice(msg string) { c.message("NOTICE", msg) }
+
+// message sends a NoticeResponse with the given severity.
+func (c *conn) message(severity, msg string) {
+	c.msg('N', fields(map[byte]string{'S': severity, 'V': severity, 'C': "00000", 'M': msg})...)
+}
+
+// messageRank orders client_min_messages levels as PostgreSQL does. Unknown
+// levels count as the default, notice.
+func messageRank(level string) int {
+	switch level {
+	case "debug5", "debug4", "debug3", "debug2", "debug1", "debug":
+		return 1
+	case "log":
+		return 2
+	case "notice", "":
+		return 3
+	case "warning":
+		return 4
+	case "error":
+		return 5
+	}
+	return 3
+}
+
+// startupMinMessages extracts client_min_messages from the startup packet:
+// a direct parameter, or "-c client_min_messages=…" / "--client_min_messages=…"
+// in options (libpq's PGOPTIONS).
+func startupMinMessages(params map[string]string) string {
+	if v := params["client_min_messages"]; v != "" {
+		return strings.ToLower(v)
+	}
+	fields := strings.Fields(params["options"])
+	for i, f := range fields {
+		kv := ""
+		switch {
+		case f == "-c" && i+1 < len(fields):
+			kv = fields[i+1]
+		case strings.HasPrefix(f, "-c"):
+			kv = f[2:]
+		case strings.HasPrefix(f, "--"):
+			kv = f[2:]
+		}
+		if k, v, ok := strings.Cut(kv, "="); ok && strings.ReplaceAll(k, "-", "_") == "client_min_messages" {
+			return strings.ToLower(v)
+		}
+	}
+	return ""
 }
 
 func (c *conn) errorResponse(err error) {

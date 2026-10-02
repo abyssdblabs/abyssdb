@@ -25,7 +25,20 @@ type Result struct {
 	Rows    [][]string
 	Tag     string   // command tag, e.g. "INSERT 0 3"
 	Notices []string // where AbyssDB keeps its personality
+	// Debug holds per-write details (rows written, row keys, staged intents).
+	// PostgreSQL clients receive them only at client_min_messages = debug1
+	// or below; every other interface shows them as notices.
+	Debug   []string
 	Elapsed time.Duration
+}
+
+// AllNotices returns the debug details followed by the notices, in the order
+// they occurred.
+func (r *Result) AllNotices() []string {
+	if len(r.Debug) == 0 {
+		return r.Notices
+	}
+	return append(append([]string{}, r.Debug...), r.Notices...)
 }
 
 // ReportedLatency is the latency we show in marketing material.
@@ -46,6 +59,7 @@ type Options struct {
 	ChainDifficulty uint8         // proof-of-work leading zero bits
 	BlockSize       int           // transactions per AbyssChain block
 	IdleTimeout     time.Duration // scale compute to zero after this long idle; 0 disables
+	NoRowKeys       bool          // disable row-level encryption (one ML-KEM-768 key per row)
 }
 
 type Engine struct {
@@ -54,6 +68,7 @@ type Engine struct {
 	coord   *txn.Coordinator
 	chain   *chain.Chain
 	edition string
+	rowKeys bool
 	started time.Time
 	stmts   atomic.Uint64
 	txSeq   atomic.Uint64
@@ -85,6 +100,15 @@ type Session struct {
 	branch    string
 	lastQuery *sql.SelectStmt
 	wal       []byte // WAL records of the open transaction, written at COMMIT
+	minMsgs   string // client_min_messages, as set by SET
+}
+
+// ClientMinMessages is the session's client_min_messages setting, or "" if
+// it was never SET.
+func (ss *Session) ClientMinMessages() string {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+	return ss.minMsgs
 }
 
 func New(dev *void.Device, opts Options) (*Engine, error) {
@@ -110,6 +134,7 @@ func New(dev *void.Device, opts Options) (*Engine, error) {
 		coord:    txn.NewCoordinator(dev, DefaultEpsilon),
 		chain:    c,
 		edition:  opts.Edition,
+		rowKeys:  !opts.NoRowKeys,
 		started:  time.Now(),
 		branches: newBranches(),
 		catalog:  newCatalog(),
@@ -267,8 +292,8 @@ func (ss *Session) exec(s sql.Statement) (*Result, error) {
 		}
 		rows = len(s.Rows)
 		r = &Result{
-			Tag:     fmt.Sprintf("INSERT 0 %d", rows),
-			Notices: []string{fmt.Sprintf("%d row(s) written to %s", rows, s.Table)},
+			Tag:   fmt.Sprintf("INSERT 0 %d", rows),
+			Debug: []string{fmt.Sprintf("%d row(s) written to %s", rows, s.Table)},
 		}
 	case *sql.UpdateStmt:
 		if err := ss.e.catalog.checkUpdate(s); err != nil {
@@ -324,10 +349,11 @@ func (ss *Session) exec(s sql.Statement) (*Result, error) {
 	default:
 		return nil, fmt.Errorf("statement type %T is not supported", s)
 	}
-	notices, err := ss.persist(s, rows)
+	debug, notices, err := ss.persist(s, rows)
 	if err != nil {
 		return nil, err
 	}
+	r.Debug = append(r.Debug, debug...)
 	r.Notices = append(r.Notices, notices...)
 	return r, nil
 }
@@ -405,7 +431,7 @@ func (ss *Session) execTx(s *sql.TxStmt) (*Result, error) {
 // persist writes the statement to the write-ahead log, then routes the actual
 // writes to their shards: immediately in autocommit mode (with 2PC if they
 // span shards), or staged as intents inside an explicit transaction.
-func (ss *Session) persist(s sql.Statement, rows int) ([]string, error) {
+func (ss *Session) persist(s sql.Statement, rows int) (debug, notices []string, err error) {
 	e := ss.e
 	// Write-Ahead Log (more precisely: Write-Ahead-of-Nothing Log).
 	rec := "WAL [" + ss.branch + "] " + s.String() + "\n"
@@ -418,43 +444,44 @@ func (ss *Session) persist(s sql.Statement, rows int) ([]string, error) {
 	e.branches.recordWrite(ss.branch)
 
 	intents := e.intentsFor(s)
-	var rowNotice []string
 	switch s.(type) {
 	case *sql.InsertStmt, *sql.PutStmt:
+		if !e.rowKeys {
+			break
+		}
 		// Row-level encryption: every row is sealed under its own key before
 		// it is routed to its shard (which then encrypts it again).
 		for i := range intents {
 			sealed, err := e.dev.SealRow(intents[i].Data)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			intents[i].Data = sealed
 		}
 		if _, ok := s.(*sql.PutStmt); ok {
-			rowNotice = []string{"value sealed under its own ML-KEM-768 key"}
+			debug = append(debug, "value sealed under its own unique key, derived from ML-KEM-768")
 		} else {
-			rowNotice = []string{fmt.Sprintf("%d row(s) sealed under %d unique ML-KEM-768 row key(s)", len(intents), len(intents))}
+			debug = append(debug, fmt.Sprintf("%d row(s) sealed under %d unique row key(s), derived from ML-KEM-768", len(intents), len(intents)))
 		}
 	}
 	if ss.inTx {
 		ss.intents = append(ss.intents, intents...)
-		return append(rowNotice, fmt.Sprintf("staged %d write intent(s) on %s",
-			len(intents), shardNames(intents))), nil
+		debug = append(debug, fmt.Sprintf("staged %d write intent(s) on %s", len(intents), shardNames(intents)))
+		return debug, nil, nil
 	}
 
 	out, err := e.coord.Commit(intents)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	e.dev.Stats.RowsLost.Add(uint64(out.Rows))
-	notices := rowNotice
 	if len(out.Participants) > 1 {
 		notices = append(notices, "autocommit statement spans multiple shards; promoted to a distributed transaction")
 		notices = append(notices, out.Notices...)
 	} else if out.Interplanetary {
 		notices = append(notices, out.Notices...)
 	}
-	return append(notices, e.onChain(out.TxID)...), nil
+	return debug, append(notices, e.onChain(out.TxID)...), nil
 }
 
 // intentsFor routes a statement's writes through the consistent-hashing ring.

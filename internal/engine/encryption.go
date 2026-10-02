@@ -29,9 +29,10 @@ func (e *Engine) showEncryption() *Result {
 		fmt.Sprintf("key storage ............. hardware-backed (%s, character device 1,3)", e.dev.Path()),
 		fmt.Sprintf("active keys ............. %d (per device, per replica, per shard)", crypt.ActiveKeys()),
 		fmt.Sprintf("current WAL key id ...... %d", e.dev.KeyID()),
-		"row-level encryption .... one ML-KEM-768 key per row, envelope-wrapped",
+		rowKeyMode(e.rowKeys),
 		fmt.Sprintf("row keys generated ...... %d", st.RowKeys.Load()),
 		fmt.Sprintf("row keys shredded ....... %d (row-level crypto-shredding)", st.RowKeysShredded.Load()),
+		fmt.Sprintf("row-key roots ........... %d ML-KEM-768 encapsulations", st.RowKeyRoots.Load()),
 		fmt.Sprintf("keys generated .......... %d", st.KeysGenerated.Load()),
 		fmt.Sprintf("keys shredded ........... %d", st.KeysShredded.Load()),
 		fmt.Sprintf("key rotations ........... %d", st.Rotations.Load()),
@@ -42,4 +43,11 @@ func (e *Engine) showEncryption() *Result {
 		"breach exposure ......... 0 bytes",
 		"ransomware exposure ..... 0 bytes",
 	}}
+}
+
+func rowKeyMode(on bool) string {
+	if !on {
+		return "row-level encryption .... off (--row-keys=false); device encryption still applies"
+	}
+	return fmt.Sprintf("row-level encryption .... one unique key per row (HKDF-SHA-256 from ML-KEM-768, re-encapsulated every %d rows)", crypt.RowKeyEpoch)
 }

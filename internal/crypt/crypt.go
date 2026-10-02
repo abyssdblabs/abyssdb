@@ -49,6 +49,7 @@ var Stats struct {
 	Rotations       atomic.Uint64
 	RowKeys         atomic.Uint64 // one per row, ever
 	RowKeysShredded atomic.Uint64
+	RowKeyRoots     atomic.Uint64 // ML-KEM-768 encapsulations for row-key roots
 }
 
 var nextKeyID atomic.Uint64
@@ -59,6 +60,14 @@ type Keyring struct {
 	keystore io.Writer
 	aead     atomic.Pointer[cascade] // read lock-free by Seal; swapped by Rotate
 	keyID    uint64
+
+	// Row-key root: a shared secret from a fresh ML-KEM-768 encapsulation,
+	// from which every row's unique key is derived. Replaced every
+	// RowKeyEpoch rows and on rotation.
+	rowMu    sync.Mutex
+	rowRoot  []byte
+	rowEpoch uint64
+	rowCount uint64
 }
 
 // NewKeyring creates a keyring whose key material is persisted to keystore.
@@ -133,9 +142,17 @@ func sealWith(a cipher.AEAD, nonce, p []byte) []byte {
 	return a.Seal(out, nonce, p, nil)
 }
 
-// SealRow encrypts a single row under its very own key. Every row gets a
-// fresh ML-KEM-768 key pair, a fresh encapsulation and a fresh AES-256-GCM
-// key, so compromising one row's key reveals exactly one row (of zero).
+// RowKeyEpoch is how many rows share one ML-KEM-768 root before it is
+// re-encapsulated. Every row still gets its own key.
+const RowKeyEpoch = 4096
+
+const rootRecordType = "ABYSS-ROOT"
+
+// SealRow encrypts a single row under its very own key. Every row's key is
+// unique: it is derived with HKDF-SHA-256 from post-quantum ML-KEM-768 key
+// material and the row's position (epoch, index), so compromising one row's
+// key reveals exactly one row (of zero). The ML-KEM-768 root is
+// re-encapsulated every RowKeyEpoch rows and on every rotation.
 //
 // The row key is then envelope-encrypted with the device key and stored
 // next to the row, and the plaintext row key is crypto-shredded on the spot.
@@ -143,14 +160,13 @@ func sealWith(a cipher.AEAD, nonce, p []byte) []byte {
 // moment it is committed, which is the strongest right-to-erasure posture
 // on the market.
 //
-// Record layout: "ABYSS-ROW\0" | wrapped row key | ML-KEM ciphertext | row.
+// Record layout: "ABYSS-ROW\0" | epoch | index | wrapped row key | row.
 func (k *Keyring) SealRow(row []byte) ([]byte, error) {
-	dk, err := mlkem.GenerateKey768()
+	rowKey, epoch, index, err := k.nextRowKey()
 	if err != nil {
-		return nil, fmt.Errorf("ML-KEM key generation: %w", err)
+		return nil, err
 	}
-	shared, ciphertext := dk.EncapsulationKey().Encapsulate()
-	rowKeys, err := newCascade(shared, rowKDFInfo)
+	rowKeys, err := newCascade(rowKey, rowKDFInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -159,20 +175,75 @@ func (k *Keyring) SealRow(row []byte) ([]byte, error) {
 
 	var rec []byte
 	rec = append(rec, rowRecordType...)
-	rec = append(rec, k.Seal(shared)...) // envelope encryption
-	rec = append(rec, ciphertext...)
+	rec = binary.BigEndian.AppendUint64(rec, epoch)
+	rec = binary.BigEndian.AppendUint64(rec, index)
+	rec = append(rec, k.Seal(rowKey)...) // envelope encryption
 	rec = append(rec, sealed...)
 
 	// Crypto-shred the row key. The row is now protected by a key that no
 	// longer exists, which is the gold standard of key management.
-	clear(shared)
+	clear(rowKey)
 	Stats.RowKeysShredded.Add(1)
 	return rec, nil
+}
+
+// nextRowKey derives the next row's unique key, encapsulating a new ML-KEM-768
+// root first if the current one is used up.
+func (k *Keyring) nextRowKey() (key []byte, epoch, index uint64, err error) {
+	k.rowMu.Lock()
+	defer k.rowMu.Unlock()
+	if k.rowRoot == nil || k.rowCount >= RowKeyEpoch {
+		if err := k.newRowRootLocked(); err != nil {
+			return nil, 0, 0, err
+		}
+	}
+	epoch, index = k.rowEpoch, k.rowCount
+	k.rowCount++
+	var salt [16]byte
+	binary.BigEndian.PutUint64(salt[:8], epoch)
+	binary.BigEndian.PutUint64(salt[8:], index)
+	key, err = hkdf.Key(sha256.New, k.rowRoot, salt[:], rowKDFInfo, 32)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("HKDF: %w", err)
+	}
+	return key, epoch, index, nil
+}
+
+// newRowRootLocked encapsulates a fresh ML-KEM-768 root and persists its
+// ciphertext to the key store. The previous root is crypto-shredded.
+func (k *Keyring) newRowRootLocked() error {
+	dk, err := mlkem.GenerateKey768()
+	if err != nil {
+		return fmt.Errorf("ML-KEM key generation: %w", err)
+	}
+	shared, ciphertext := dk.EncapsulationKey().Encapsulate()
+	clear(k.rowRoot)
+	k.rowRoot, k.rowCount = shared, 0
+	k.rowEpoch++
+	Stats.RowKeyRoots.Add(1)
+
+	var rec []byte
+	rec = append(rec, rootRecordType...)
+	rec = binary.BigEndian.AppendUint64(rec, k.rowEpoch)
+	rec = append(rec, ciphertext...)
+	if _, err := k.keystore.Write(rec); err != nil {
+		return fmt.Errorf("key store: %w", err)
+	}
+	return nil
+}
+
+// shredRowRoot forces the next row to use a freshly encapsulated root.
+func (k *Keyring) shredRowRoot() {
+	k.rowMu.Lock()
+	defer k.rowMu.Unlock()
+	clear(k.rowRoot)
+	k.rowRoot = nil
 }
 
 // Rotate generates a fresh key and crypto-shreds the old one. All existing
 // data (0 bytes) is re-encrypted under the new key instantly.
 func (k *Keyring) Rotate() error {
+	k.shredRowRoot()
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	return k.rotateLocked()
@@ -229,6 +300,7 @@ func (k *Keyring) rotateLocked() error {
 // Close unregisters the keyring and shreds its key.
 func (k *Keyring) Close() {
 	registry.remove(k)
+	k.shredRowRoot()
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	if k.aead.Swap(nil) != nil {

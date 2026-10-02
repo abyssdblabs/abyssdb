@@ -15,6 +15,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -116,6 +117,8 @@ type topology struct {
 	storageEngine string
 	scaleToZero   time.Duration
 	otlpEndpoint  string
+	rowKeys       bool
+	threads       int
 }
 
 func (t *topology) register(fs *flag.FlagSet) {
@@ -129,6 +132,8 @@ func (t *topology) register(fs *flag.FlagSet) {
 	fs.IntVar(&t.blockSize, "block-size", 128, "transactions per AbyssChain block")
 	fs.StringVar(&t.storageEngine, "storage-engine", "kernel", "storage engine: "+strings.Join(void.Engines(), " | "))
 	fs.DurationVar(&t.scaleToZero, "scale-to-zero", 5*time.Minute, "scale compute to zero after this long idle (0 disables)")
+	fs.IntVar(&t.threads, "threads", 0, "maximum OS threads running Go code at once (GOMAXPROCS); 0 = all cores")
+	fs.BoolVar(&t.rowKeys, "row-keys", true, "seal every row under its own unique key, derived from ML-KEM-768 key material (row-level encryption)")
 	fs.StringVar(&t.otlpEndpoint, "otlp-endpoint", "", "OpenTelemetry OTLP/HTTP endpoint for traces (default: $OTEL_EXPORTER_OTLP_ENDPOINT)")
 }
 
@@ -141,6 +146,9 @@ func (t *topology) regionList() []string {
 
 // newEngine opens the void and, if requested, shards and NullRaft groups.
 func newEngine(t topology, logf func(string, ...any)) (*engine.Engine, func(), error) {
+	if t.threads > 0 {
+		runtime.GOMAXPROCS(t.threads)
+	}
 	void.DefaultEngine = t.storageEngine
 	dev, err := void.Open()
 	if err != nil {
@@ -152,6 +160,7 @@ func newEngine(t topology, logf func(string, ...any)) (*engine.Engine, func(), e
 		ChainDifficulty: uint8(min(t.difficulty, 64)),
 		BlockSize:       t.blockSize,
 		IdleTimeout:     t.scaleToZero,
+		NoRowKeys:       !t.rowKeys,
 	})
 	if err != nil {
 		_ = dev.Close()
