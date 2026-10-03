@@ -316,11 +316,11 @@ format-detected too, so nested documents are reported as well:
 
 ```
 abyss=> PUT 'inception' = $$outer = '''{"middle": "inner: {deep: true}"}'''$$;
+NOTICE:  value sealed under its own unique key, derived from ML-KEM-768
 NOTICE:  value format auto-detected: TOML (confidence 100%)
 NOTICE:  1 nested key-value pair(s), depth 1, 49 bytes canonical
 NOTICE:  nested documents: YAML inside JSON inside TOML (3 level(s) of key-value pairs within key-value pairs)
-NOTICE:  stored under key 'inception'
-NOTICE:  value sealed under its own ML-KEM-768 key
+NOTICE:  stored under key 'inception
 PUT 1
 ```
 

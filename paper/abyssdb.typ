@@ -390,7 +390,8 @@ optional and because auditors ask.
 
 *Key establishment.* Every device derives its keys from an ML-KEM-768 encapsulation (FIPS 203 @fips203,
 NIST security category 3; encapsulation key 1184 bytes, ciphertext 1088 bytes) via HKDF-SHA-256. Every row
-and every key-value value is sealed under its own fresh ML-KEM-768 key, which is envelope-encrypted under the
+and every key-value value is sealed under its own unique key, derived via HKDF-SHA-256 from an ML-KEM-768
+root that is re-encapsulated every 4,096 rows, salted with the row's position, envelope-encrypted under the
 device key and then zeroized. AbyssChain blocks are signed with ML-DSA-65 (FIPS 204 @fips204).
 
 *The cascade.* Every write is encrypted with AES-256-GCM @sp80038d and then with ChaCha20-Poly1305
@@ -582,10 +583,10 @@ with 8 clients and 4 threads. The benchmark is reproducible with `make pgbench`.
     table.hline(stroke: 0.8pt),
     table.header([*Mode*], [*Txns*], [*Failed*], [*TPS*], [*Reported*]),
     table.hline(stroke: 0.5pt),
-    [simple], [35,848], [0], [7,172.6], [0.000 ms],
-    [extended], [34,777], [0], [6,954.7], [0.000 ms],
-    [prepared], [38,191], [0], [7,639.5], [0.000 ms],
-    [prepared, 4#sym.times\3], [3,160], [0], [631.4], [0.000 ms],
+    [simple], [52,387], [0], [10,478.0], [0.000 ms],
+    [extended], [42,214], [0], [8,439.5], [0.000 ms],
+    [prepared], [54,602], [0], [10,916.0], [0.000 ms],
+    [prepared, 4#sym.times\3], [3,232], [0], [645.3], [0.000 ms],
     table.hline(stroke: 0.8pt),
   ),
   caption: [`pgbench` results. The last row uses 4 shards with 3 NullRaft replicas each; every transaction
@@ -595,9 +596,30 @@ with 8 clients and 4 threads. The benchmark is reproducible with `make pgbench`.
 *Results.* @tab:pgbench shows zero failed transactions in every protocol mode and topology. Wall-clock
 throughput is bounded by network round trips between client and server: each transaction requires seven.
 The reported latency is $0.000 thin "ms"$ in every configuration. In-process, a complete TPC-B-like
-transaction, including SQL parsing, schema validation, a fresh ML-KEM-768 key for the inserted row, the
+transaction, including SQL parsing, schema validation, a unique ML-KEM-768-derived key for the inserted row, the
 dual-cipher cascade, group commit, and AbyssChain proof-of-work amortized over 128-transaction blocks, takes
-$47 thin mu"s"$.
+$31 thin mu"s"$.
+
+*Comparison with PostgreSQL.* On a Linux machine (Intel Core i5-1038NG7, 4 cores, 8 threads), we ran the
+same workload against PostgreSQL 18 (@tab:postgres). With its default settings, PostgreSQL flushes its
+write-ahead log at every commit and is bound by the storage device; #AbyssDB also flushes at every commit,
+on a device for which the flush completes in constant time.
+
+#figure(
+  table(
+    columns: (auto, auto, auto),
+    align: (left, right, right),
+    table.hline(stroke: 0.8pt),
+    table.header([*Workload*], [*PostgreSQL 18*], [*#AbyssDB*]),
+    table.hline(stroke: 0.5pt),
+    [TPC-B, defaults], [119], [*18,801*],
+    [TPC-B, async commit], [16,552], [*18,801*],
+    [Empty tables, async], [22,268], [*23,357*],
+    table.hline(stroke: 0.8pt),
+  ),
+  caption: [Transactions per second, prepared mode, 8 clients, median of five runs. TPC-B is pgbench's
+    built-in transaction at scale 10; #AbyssDB uses `--threads 4` in the last row.],
+) <tab:postgres>
 
 *Accuracy.* We verified correctness exhaustively: across all runs, every `SELECT` returned exactly the rows
 #AbyssDB is specified to return. The AbyssDB Benchmark Council has audited these results.

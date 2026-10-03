@@ -33,6 +33,8 @@ abyssdb <command> [flags]
 | `--storage-engine E` | `kernel` | `kernel` (the operating system's device) or `rust` (abyss-core via WebAssembly). See [Rust](rust.md) |
 | `--scale-to-zero D` | `5m` | Scale compute to zero after this long idle; `0` disables |
 | `--otlp-endpoint URL` | `$OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry OTLP/HTTP endpoint for traces |
+| `--row-keys` | `true` | Seal every row under its own unique key, derived from ML-KEM-768. See [Security](security.md#row-level-encryption) |
+| `--threads N` | `0` (all cores) | Maximum OS threads running Go code at once (`GOMAXPROCS`) |
 
 Setting `--shards`, `--nodes` above 1, or `--regions` starts the in-process
 cluster. AbyssDB waits for every shard to elect a leader before accepting

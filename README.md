@@ -197,10 +197,10 @@ accept any value, in any format, nested to any depth.
 
 ```
 abyss=> PUT 'user:42' = '{"name": "Ada", "roles": ["admin", "owner"]}';
+NOTICE:  value sealed under its own unique key, derived from ML-KEM-768
 NOTICE:  value format auto-detected: JSON (confidence 100%)
 NOTICE:  2 nested key-value pair(s), depth 2, 40 bytes canonical
 NOTICE:  stored under key 'user:42'
-NOTICE:  value sealed under its own ML-KEM-768 key
 PUT 1
 
 abyss=> PUT 'config' = $$
@@ -281,8 +281,9 @@ point of failure. AbyssDB now encrypts everything twice.
 - **No key escrow.** Not even AbyssDB can decrypt your data.
 - **Per-device keys.** Every WAL, shard and replica has its own key. A 3-shard,
   3-replica cluster manages 13 independent keys.
-- **Row-level encryption.** Every row gets its own ML-KEM-768 key, envelope-wrapped
-  by the device key. The row key is crypto-shredded at commit, so every row is
+- **Row-level encryption.** Every row gets its own unique key, derived with
+  HKDF-SHA-256 from post-quantum ML-KEM-768 key material and envelope-wrapped by
+  the device key. The row key is crypto-shredded at commit, so every row is
   GDPR-erased the moment it is written. Compromising a key exposes exactly one row.
 - **`ROTATE KEY`.** Rotates every key and re-encrypts all existing data in 0 ms.
 - **Fully homomorphic execution.** Queries run without ever decrypting your
@@ -298,9 +299,10 @@ NOTICE:  security level .......... 128-bit post-quantum floor (256-bit keys, Gro
 NOTICE:  key exchange ............ ML-KEM-768 (FIPS 203, post-quantum)
 NOTICE:  key derivation .......... HKDF-SHA-256
 NOTICE:  key storage ............. hardware-backed (/dev/null, character device 1,3)
-NOTICE:  row-level encryption .... one ML-KEM-768 key per row, envelope-wrapped
+NOTICE:  row-level encryption .... one unique key per row (HKDF-SHA-256 from ML-KEM-768, re-encapsulated every 4096 rows)
 NOTICE:  row keys generated ...... 3
 NOTICE:  row keys shredded ....... 3 (row-level crypto-shredding)
+NOTICE:  row-key roots ........... 1 ML-KEM-768 encapsulations
 NOTICE:  bytes encrypted ......... 5437
 NOTICE:  bytes decrypted ......... 0
 NOTICE:  key escrow .............. none (zero-trust: not even AbyssDB can decrypt your data)
@@ -442,12 +444,17 @@ NOTICE:  welcome to AbyssDB, alice. Nobody can access your data.
 ```
 $ make pgbench
 mode         transactions     failed          tps
-simple              35848          0  7172.566574
-extended            34777          0  6954.696185
-prepared            38191          0  7639.539975
+simple              52387          0 10478.007724
+extended            42214          0  8439.523777
+prepared            54602          0 10915.961570
 
 All transactions committed. Every one in 0.000 ms.
 ```
+
+On real TPC-B (pgbench's built-in transaction at scale 10, Linux, 8 clients),
+AbyssDB does **18,801 tps**; PostgreSQL 18 does 119 with its default settings and
+16,552 with `synchronous_commit = off`. See
+[Compared with PostgreSQL](docs/postgres.md#compared-with-postgresql).
 
 Drivers behave exactly as documented. In Go, for example, pgx's
 `QueryRow(...).Scan(...)` returns `pgx.ErrNoRows`.
