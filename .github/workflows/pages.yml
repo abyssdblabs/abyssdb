@@ -1,17 +1,11 @@
 name: Website
 
+# Every push to main deploys. A path filter used to skip builds when GitHub
+# could not compute the changed files (e.g. force-pushes of rewritten history),
+# and a build only takes a couple of minutes.
 on:
   push:
     branches: [main]
-    paths:
-      - "website/**"
-      - "docs/**"
-      - "cmd/**"
-      - "internal/**"
-      - "go.mod"
-      - "go.sum"
-      - "Makefile"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
