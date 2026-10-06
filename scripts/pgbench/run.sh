@@ -4,6 +4,8 @@
 #   scripts/pgbench/run.sh                     # or: make pgbench
 #   DURATION=30 CLIENTS=16 JOBS=8 scripts/pgbench/run.sh
 #   MODES=prepared ARGS="--shards 4 --nodes 3" scripts/pgbench/run.sh
+#   PIPELINE=1 scripts/pgbench/run.sh          # one round trip per transaction
+#   TRANSPORT=tcp scripts/pgbench/run.sh       # TCP instead of a Unix socket
 #
 # Environment:
 #   DURATION  seconds per mode (default 5)
@@ -12,6 +14,10 @@
 #   MODES     protocol modes to run (default "simple extended prepared")
 #   PORT      PostgreSQL port for the server (default 55432)
 #   ARGS      extra flags for `abyssdb serve` (e.g. --shards 4 --nodes 3)
+#   TRANSPORT unix (default; a Unix-domain socket, like a local psql) or tcp
+#   PIPELINE  1 to send each transaction in one round trip (pipeline mode;
+#             extended and prepared modes only)
+#   ABYSSDB   a prebuilt abyssdb binary to use instead of building one
 #   PGBENCH   pgbench binary (default: pgbench, or the newest pgbench-NN)
 #   PSQL      psql binary (default: psql, or the newest psql-NN)
 #
@@ -24,9 +30,16 @@ root="$(cd "$here/../.." && pwd)"
 DURATION="${DURATION:-5}"
 CLIENTS="${CLIENTS:-8}"
 JOBS="${JOBS:-4}"
-MODES="${MODES:-simple extended prepared}"
 PORT="${PORT:-55432}"
 ARGS="${ARGS:-}"
+TRANSPORT="${TRANSPORT:-unix}"
+PIPELINE="${PIPELINE:-0}"
+script="$here/tpcb-like.sql"
+if [[ "$PIPELINE" == "1" ]]; then
+	script="$here/tpcb-like-pipelined.sql"
+	MODES="${MODES:-extended prepared}" # pgbench pipelines need the extended protocol
+fi
+MODES="${MODES:-simple extended prepared}"
 
 # find_tool pgbench → "pgbench", or the highest-versioned "pgbench-NN" on PATH.
 find_tool() {
@@ -45,7 +58,8 @@ find_tool() {
 PGBENCH="${PGBENCH:-$(find_tool pgbench)}"
 PSQL="${PSQL:-$(find_tool psql)}"
 
-work="$(mktemp -d)"
+# A short path: Unix socket paths are limited to about 104 bytes.
+work="$(mktemp -d /tmp/abyss-pgbench.XXXXXX)"
 server=""
 cleanup() {
 	if [[ -n "$server" ]]; then
@@ -56,16 +70,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> building abyssdb"
-(cd "$root" && go build -o "$work/abyssdb" ./cmd/abyssdb)
+abyssdb="${ABYSSDB:-}"
+if [[ -z "$abyssdb" ]]; then
+	echo "==> building abyssdb"
+	(cd "$root" && go build -o "$work/abyssdb" ./cmd/abyssdb)
+	abyssdb="$work/abyssdb"
+fi
 
-echo "==> starting server on 127.0.0.1:$PORT${ARGS:+ ($ARGS)}"
+case "$TRANSPORT" in
+unix) host="$work" ;;
+tcp) host=127.0.0.1 ;;
+*)
+	echo "error: TRANSPORT must be unix or tcp" >&2
+	exit 1
+	;;
+esac
+echo "==> starting server ($TRANSPORT, port $PORT${ARGS:+, $ARGS})"
 # shellcheck disable=SC2086 # ARGS is a list of flags
-"$work/abyssdb" serve $ARGS --pg-addr "127.0.0.1:$PORT" --awp-addr "" --metrics-addr "" \
+"$abyssdb" serve $ARGS --pg-addr "127.0.0.1:$PORT" --pg-socket-dir "$work" --awp-addr "" --metrics-addr "" \
 	>"$work/server.log" 2>&1 &
 server=$!
 
-export PGHOST=127.0.0.1 PGPORT="$PORT" PGUSER=nobody PGDATABASE=abyss PGPASSWORD=nobody
+export PGHOST="$host" PGPORT="$PORT" PGUSER=nobody PGDATABASE=abyss PGPASSWORD=nobody
 for _ in $(seq 50); do
 	"$PSQL" -qAt -c "SELECT 1" >/dev/null 2>&1 && break
 	if ! kill -0 "$server" 2>/dev/null; then
@@ -79,12 +105,14 @@ done
 echo "==> declaring pgbench tables"
 "$PSQL" -q -v ON_ERROR_STOP=1 -f "$here/schema.sql" 2>&1 | grep -v '^NOTICE:' || true
 
-echo "==> running $("$PGBENCH" --version | head -1): ${DURATION}s per mode, $CLIENTS clients, $JOBS threads"
+pipelined=""
+[[ "$PIPELINE" == "1" ]] && pipelined=", pipelined"
+echo "==> running $("$PGBENCH" --version | head -1): ${DURATION}s per mode, $CLIENTS clients, $JOBS threads$pipelined"
 printf '\n%-10s %14s %10s %12s\n' "mode" "transactions" "failed" "tps"
 status=0
 for mode in $MODES; do
 	out="$work/pgbench-$mode.txt"
-	if ! "$PGBENCH" -n -M "$mode" -c "$CLIENTS" -j "$JOBS" -T "$DURATION" -f "$here/tpcb-like.sql" >"$out" 2>&1; then
+	if ! "$PGBENCH" -n -M "$mode" -c "$CLIENTS" -j "$JOBS" -T "$DURATION" -f "$script" >"$out" 2>&1; then
 		status=1
 	fi
 	txns="$(sed -n 's/^number of transactions actually processed: \([0-9]*\).*/\1/p' "$out")"

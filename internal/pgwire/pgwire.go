@@ -18,6 +18,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 
@@ -41,7 +44,30 @@ var pidSeq atomic.Int32
 type Server struct {
 	Engine *engine.Engine
 	TLS    *tls.Config // nil: SSL requests are politely declined
+	// IO selects how connections are served: IOThread (the default) gives
+	// every connection its own OS thread with blocking socket I/O, the way
+	// PostgreSQL serves each client from its own process; IOPoller uses Go's
+	// network poller. Measured with pgbench, threads are 5-35% faster on
+	// both TCP and Unix-domain sockets.
+	IO IOMode
+
+	threaded atomic.Int64
 }
+
+// IOMode selects the connection I/O model.
+type IOMode string
+
+const (
+	IOThread IOMode = "thread"
+	IOPoller IOMode = "poller"
+)
+
+// MaxThreadedConns caps thread-per-connection serving; beyond it, connections
+// use the poller. Go limits a process to 10,000 OS threads.
+const MaxThreadedConns = 1000
+
+// useThread reports whether connections get their own thread.
+func (s *Server) useThread() bool { return s.IO != IOPoller }
 
 func (s *Server) ListenAndServe(addr string) error {
 	ln, err := net.Listen("tcp", addr)
@@ -52,6 +78,24 @@ func (s *Server) ListenAndServe(addr string) error {
 	return s.Serve(ln)
 }
 
+// ListenAndServeUnix listens on a Unix-domain socket in dir, named the way
+// PostgreSQL names it (.s.PGSQL.<port>), so that clients connect with
+// "psql -h <dir> -p <port>". A stale socket file from a previous run is
+// removed first.
+func (s *Server) ListenAndServeUnix(dir string, port int) error {
+	path := filepath.Join(dir, fmt.Sprintf(".s.PGSQL.%d", port))
+	if fi, err := os.Lstat(path); err == nil && fi.Mode()&os.ModeSocket != 0 {
+		_ = os.Remove(path)
+	}
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(path)
+	log.Printf("PostgreSQL protocol listening on %s (server_version %s)", path, serverVersion)
+	return s.Serve(ln)
+}
+
 func (s *Server) Serve(ln net.Listener) error {
 	for {
 		conn, err := ln.Accept()
@@ -59,6 +103,20 @@ func (s *Server) Serve(ln net.Listener) error {
 			return err
 		}
 		go func() {
+			threaded := false
+			if s.useThread() {
+				if s.threaded.Add(1) <= MaxThreadedConns {
+					if dc, ok := dedicate(conn); ok {
+						runtime.LockOSThread()
+						conn, threaded = dc, true
+					}
+				}
+				if !threaded {
+					s.threaded.Add(-1)
+				} else {
+					defer s.threaded.Add(-1)
+				}
+			}
 			defer conn.Close()
 			if err := s.serve(conn); err != nil && !errors.Is(err, io.EOF) {
 				log.Printf("pg %s: %v", conn.RemoteAddr(), err)

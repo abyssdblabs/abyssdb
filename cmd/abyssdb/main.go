@@ -13,9 +13,11 @@ import (
 	"io"
 	"log"
 	"math/rand/v2"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -344,6 +346,8 @@ func cmdServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	pgAddr := fs.String("pg-addr", "127.0.0.1:5432", "PostgreSQL protocol listen address (empty to disable)")
 	awpAddr := fs.String("awp-addr", "127.0.0.1:4040", "AWP (netcat protocol) listen address (empty to disable)")
+	pgIO := fs.String("pg-io", "thread", "PostgreSQL connection I/O: thread (a thread per connection with blocking I/O, like PostgreSQL) or poller (Go's network poller)")
+	pgSocketDir := fs.String("pg-socket-dir", "", "also listen on a Unix-domain socket in this directory (.s.PGSQL.<port>), like PostgreSQL")
 	var t topology
 	t.register(fs)
 	verbose := fs.Bool("v", false, "log cluster events")
@@ -377,13 +381,28 @@ func cmdServe(args []string) error {
 	stopWatch := make(chan struct{})
 	defer close(stopWatch)
 	go eng.WatchScaleToZero(log.Printf, stopWatch)
+	pg := &pgwire.Server{Engine: eng, TLS: tlsCfg, IO: pgwire.IOMode(*pgIO)}
+	switch pg.IO {
+	case pgwire.IOThread, pgwire.IOPoller:
+	default:
+		return fmt.Errorf("unknown --pg-io %q (try thread or poller)", *pgIO)
+	}
 	if *pgAddr != "" {
-		go func() { errs <- (&pgwire.Server{Engine: eng, TLS: tlsCfg}).ListenAndServe(*pgAddr) }()
+		go func() { errs <- pg.ListenAndServe(*pgAddr) }()
+	}
+	if *pgSocketDir != "" {
+		port := 5432
+		if _, p, err := net.SplitHostPort(*pgAddr); err == nil {
+			if n, err := strconv.Atoi(p); err == nil {
+				port = n
+			}
+		}
+		go func() { errs <- pg.ListenAndServeUnix(*pgSocketDir, port) }()
 	}
 	if *awpAddr != "" {
 		go func() { errs <- server.ListenAndServe(*awpAddr, eng, tlsCfg) }()
 	}
-	if *pgAddr == "" && *awpAddr == "" {
+	if *pgAddr == "" && *awpAddr == "" && *pgSocketDir == "" {
 		return errors.New("all listeners disabled")
 	}
 	return <-errs
