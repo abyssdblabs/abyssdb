@@ -67,12 +67,14 @@ abyssdb exec --shards 4 < migration.sql
 ## serve
 
 ```sh
-abyssdb serve [--pg-addr ADDR] [--awp-addr ADDR] [--tls] [-v] [topology flags]
+abyssdb serve [--pg-addr ADDR] [--pg-socket-dir DIR] [--pg-io MODE] [--awp-addr ADDR] [--tls] [-v] [topology flags]
 ```
 
 | Flag         | Default          | Description                                                                             |
 |--------------|------------------|-----------------------------------------------------------------------------------------|
 | `--pg-addr`  | `127.0.0.1:5432` | PostgreSQL wire protocol listener; empty disables it                                    |
+| `--pg-socket-dir` | (none) | Also listen on a Unix-domain socket, `DIR/.s.PGSQL.<port>`, like PostgreSQL. Connect with `psql -h DIR` |
+| `--pg-io` | `thread` | Connection I/O: `thread` gives every connection its own OS thread with blocking socket I/O, as PostgreSQL does with processes; `poller` uses Go's network poller |
 | `--awp-addr` | `127.0.0.1:4040` | AWP (Abyss Wire Protocol) listener; empty disables it                                   |
 | `--tls`      | off              | TLS 1.3 on both listeners, with a self-signed certificate and post-quantum key exchange |
 | `-v`         | off              | Log NullRaft cluster events to stderr                                                   |

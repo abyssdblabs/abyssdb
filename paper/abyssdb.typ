@@ -571,10 +571,11 @@ reports a conflict.
 
 = Evaluation
 
-*Setup.* We ran `pgbench` 18.1 against #AbyssDB over the PostgreSQL v3 protocol on a 10-core Apple M1 Pro,
-using pgbench's TPC-B-like transaction (five statements in a transaction block) against the four standard
-pgbench tables, declared with their usual schema and validated on every write. Each mode ran for 5 seconds
-with 8 clients and 4 threads. The benchmark is reproducible with `make pgbench`.
+*Setup.* We ran `pgbench` 18.6 against #AbyssDB over the PostgreSQL v3 protocol on Linux (Ubuntu 26.04,
+Intel Core i5-1038NG7, 4 cores, 8 threads), using pgbench's TPC-B-like transaction (five statements in a
+transaction block) against the four standard pgbench tables, declared with their usual schema and validated
+on every write. Each mode ran for 5 seconds with 8 clients and 4 threads over a Unix-domain socket, with one
+server thread per connection. The benchmark is reproducible with `make pgbench`.
 
 #figure(
   table(
@@ -583,27 +584,30 @@ with 8 clients and 4 threads. The benchmark is reproducible with `make pgbench`.
     table.hline(stroke: 0.8pt),
     table.header([*Mode*], [*Txns*], [*Failed*], [*TPS*], [*Reported*]),
     table.hline(stroke: 0.5pt),
-    [simple], [52,387], [0], [10,478.0], [0.000 ms],
-    [extended], [42,214], [0], [8,439.5], [0.000 ms],
-    [prepared], [54,602], [0], [10,916.0], [0.000 ms],
-    [prepared, 4#sym.times\3], [3,232], [0], [645.3], [0.000 ms],
+    [simple], [120,033], [0], [24,015.7], [0.000 ms],
+    [extended], [96,766], [0], [19,353.4], [0.000 ms],
+    [prepared], [148,426], [0], [29,686.6], [0.000 ms],
+    [prepared, pipelined], [250,478], [0], [50,085.5], [0.000 ms],
+    [prepared, 4#sym.times\3], [3,214], [0], [642.5], [0.000 ms],
     table.hline(stroke: 0.8pt),
   ),
-  caption: [`pgbench` results. The last row uses 4 shards with 3 NullRaft replicas each; every transaction
-    is a distributed transaction with commit-wait.],
+  caption: [`pgbench` results. Pipeline mode sends each transaction in one round trip. The last row uses
+    4 shards with 3 NullRaft replicas each; every transaction is a distributed transaction with commit-wait.],
 ) <tab:pgbench>
 
 *Results.* @tab:pgbench shows zero failed transactions in every protocol mode and topology. Wall-clock
-throughput is bounded by network round trips between client and server: each transaction requires seven.
-The reported latency is $0.000 thin "ms"$ in every configuration. In-process, a complete TPC-B-like
-transaction, including SQL parsing, schema validation, a unique ML-KEM-768-derived key for the inserted row, the
-dual-cipher cascade, group commit, and AbyssChain proof-of-work amortized over 128-transaction blocks, takes
-$31 thin mu"s"$.
+throughput is bounded by round trips between client and server: each transaction requires seven, and
+pipelining them into one raises throughput by 69%. The reported latency is $0.000 thin "ms"$ in every
+configuration. In-process, a complete TPC-B-like transaction, including SQL parsing, schema validation, a
+unique ML-KEM-768-derived key for the inserted row, the dual-cipher cascade, group commit, and AbyssChain
+proof-of-work amortized over 128-transaction blocks, takes $31 thin mu"s"$ on an Apple M1 Pro.
 
-*Comparison with PostgreSQL.* On a Linux machine (Intel Core i5-1038NG7, 4 cores, 8 threads), we ran the
-same workload against PostgreSQL 18 (@tab:postgres). With its default settings, PostgreSQL flushes its
-write-ahead log at every commit and is bound by the storage device; #AbyssDB also flushes at every commit,
-on a device for which the flush completes in constant time.
+*Comparison with PostgreSQL.* We ran the same workload against PostgreSQL 18 on the same machine
+(@tab:postgres). With its default settings, PostgreSQL flushes its write-ahead log at every commit and is
+bound by the storage device; #AbyssDB also flushes at every commit, on a device for which the flush
+completes in constant time. On empty tables, where PostgreSQL has no data to process either, it remains
+8% ahead; we attribute this to its process-per-connection design, which #AbyssDB approximates with one
+thread per connection.
 
 #figure(
   table(
@@ -612,13 +616,13 @@ on a device for which the flush completes in constant time.
     table.hline(stroke: 0.8pt),
     table.header([*Workload*], [*PostgreSQL 18*], [*#AbyssDB*]),
     table.hline(stroke: 0.5pt),
-    [TPC-B, defaults], [119], [*18,801*],
-    [TPC-B, async commit], [16,552], [*18,801*],
-    [Empty tables, async], [22,268], [*23,357*],
+    [TPC-B, defaults], [125], [*29,687*],
+    [TPC-B, async commit], [20,666], [*29,687*],
+    [Empty tables, async], [*32,117*], [29,687],
     table.hline(stroke: 0.8pt),
   ),
-  caption: [Transactions per second, prepared mode, 8 clients, median of five runs. TPC-B is pgbench's
-    built-in transaction at scale 10; #AbyssDB uses `--threads 4` in the last row.],
+  caption: [Transactions per second, prepared mode, 8 clients, Unix-domain socket, median of several
+    interleaved runs. TPC-B is pgbench's built-in transaction at scale 10.],
 ) <tab:postgres>
 
 *Accuracy.* We verified correctness exhaustively: across all runs, every `SELECT` returned exactly the rows

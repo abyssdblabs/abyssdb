@@ -444,17 +444,17 @@ NOTICE:  welcome to AbyssDB, alice. Nobody can access your data.
 ```
 $ make pgbench
 mode         transactions     failed          tps
-simple              52387          0 10478.007724
-extended            42214          0  8439.523777
-prepared            54602          0 10915.961570
+simple             120033          0 24015.677926
+extended            96766          0 19353.436112
+prepared           148426          0 29686.607145
 
 All transactions committed. Every one in 0.000 ms.
 ```
 
-On real TPC-B (pgbench's built-in transaction at scale 10, Linux, 8 clients),
-AbyssDB does **18,801 tps**; PostgreSQL 18 does 119 with its default settings and
-16,552 with `synchronous_commit = off`. See
-[Compared with PostgreSQL](docs/postgres.md#compared-with-postgresql).
+On real TPC-B (pgbench's built-in transaction at scale 10, Linux, 8 clients, Unix
+socket), AbyssDB does **29,687 tps**; PostgreSQL 18 does 125 with its default
+settings and 20,666 with `synchronous_commit = off`. In pipeline mode AbyssDB does
+50,085. See [pgbench](docs/postgres.md#pgbench).
 
 Drivers behave exactly as documented. In Go, for example, pgx's
 `QueryRow(...).Scan(...)` returns `pgx.ErrNoRows`.
