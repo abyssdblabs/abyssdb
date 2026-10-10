@@ -131,7 +131,7 @@ func (t *topology) register(fs *flag.FlagSet) {
 	fs.Float64Var(&t.warp, "warp", 1, "compress interplanetary waits by this factor (demo mode)")
 	fs.StringVar(&t.edition, "edition", engine.EditionCommunity, "community | deep-abyss")
 	fs.UintVar(&t.difficulty, "chain-difficulty", 12, "AbyssChain proof-of-work difficulty in leading zero bits")
-	fs.IntVar(&t.blockSize, "block-size", 128, "transactions per AbyssChain block")
+	fs.IntVar(&t.blockSize, "block-size", engine.DefaultBlockSize, "transactions per AbyssChain block")
 	fs.StringVar(&t.storageEngine, "storage-engine", "kernel", "storage engine: "+strings.Join(void.Engines(), " | "))
 	fs.DurationVar(&t.scaleToZero, "scale-to-zero", 5*time.Minute, "scale compute to zero after this long idle (0 disables)")
 	fs.IntVar(&t.threads, "threads", 0, "maximum OS threads running Go code at once (GOMAXPROCS); 0 = all cores")

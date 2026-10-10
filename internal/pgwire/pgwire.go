@@ -137,6 +137,7 @@ type conn struct {
 	// minMessages is client_min_messages from the startup packet; SET
 	// overrides it per session.
 	minMessages string
+	buf         []byte // read buffer, reused across messages
 }
 
 type prepared struct {
@@ -155,6 +156,7 @@ func (s *Server) serve(nc net.Conn) error {
 	}
 	c.sess = s.Engine.NewSession()
 	c.minMessages = startupMinMessages(params)
+	c.sess.SetDebug(engine.WantsDebug(c.minMessages))
 	user := params["user"]
 	c.sess.SetLoginUser(user)
 
@@ -569,7 +571,11 @@ func (c *conn) readUntyped() ([]byte, error) {
 	if n < 0 || n > maxMessageSize {
 		return nil, fmt.Errorf("invalid message length %d", n)
 	}
-	body := make([]byte, n)
+	// The buffer is reused for every message: handlers copy what they keep.
+	if cap(c.buf) < n {
+		c.buf = make([]byte, n, max(n, 4096))
+	}
+	body := c.buf[:n]
 	_, err := io.ReadFull(c.r, body)
 	return body, err
 }

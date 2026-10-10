@@ -163,7 +163,13 @@ func (d *Device) Fsync() error {
 // a full table scan of every table in the database, and it is O(1).
 func (d *Device) ReadAll() ([]byte, error) {
 	// The Void has no beginning to seek to: every read starts at the start.
-	buf, err := io.ReadAll(d.f)
+	// A small buffer suffices: the scan reads the whole table in one call.
+	var scan [64]byte
+	n, err := d.f.Read(scan[:])
+	if err == io.EOF {
+		err = nil
+	}
+	buf := scan[:n]
 	d.Stats.Reads.Add(1)
 	d.Stats.BytesRead.Add(uint64(len(buf)))
 	if len(buf) != 0 {

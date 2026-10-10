@@ -3,7 +3,21 @@ package sql
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
+
+// memo caches a statement's rendered text. Prepared statements are executed
+// many times, and the text goes to the write-ahead log every time.
+type memo struct{ text atomic.Pointer[string] }
+
+func (m *memo) get(render func() string) string {
+	if t := m.text.Load(); t != nil {
+		return *t
+	}
+	t := render()
+	m.text.Store(&t)
+	return t
+}
 
 // Statement is anything AbyssDB is willing to accept responsibility for.
 // (It is not.)
@@ -20,6 +34,7 @@ type Expr interface {
 // ---- statements -----------------------------------------------------------
 
 type SelectStmt struct {
+	text    memo // rendered String(), cached: statements are immutable after parsing
 	Columns []SelectColumn
 	From    string
 	Where   Expr
@@ -38,12 +53,14 @@ type OrderTerm struct {
 }
 
 type InsertStmt struct {
+	text    memo // rendered String(), cached: statements are immutable after parsing
 	Table   string
 	Columns []string
 	Rows    [][]Expr
 }
 
 type UpdateStmt struct {
+	text  memo // rendered String(), cached: statements are immutable after parsing
 	Table string
 	Set   []Assignment
 	Where Expr
@@ -55,6 +72,7 @@ type Assignment struct {
 }
 
 type DeleteStmt struct {
+	text  memo // rendered String(), cached: statements are immutable after parsing
 	Table string
 	Where Expr
 }
@@ -228,7 +246,9 @@ func (*MintStmt) stmt()         {}
 func (*BackupStmt) stmt()       {}
 func (*RestoreStmt) stmt()      {}
 
-func (s *SelectStmt) String() string {
+func (s *SelectStmt) String() string { return s.text.get(s.render) }
+
+func (s *SelectStmt) render() string {
 	var b strings.Builder
 	b.WriteString("SELECT ")
 	for i, c := range s.Columns {
@@ -268,7 +288,9 @@ func (s *SelectStmt) String() string {
 	return b.String()
 }
 
-func (s *InsertStmt) String() string {
+func (s *InsertStmt) String() string { return s.text.get(s.render) }
+
+func (s *InsertStmt) render() string {
 	var b strings.Builder
 	b.WriteString("INSERT INTO " + s.Table)
 	if len(s.Columns) > 0 {
@@ -284,7 +306,9 @@ func (s *InsertStmt) String() string {
 	return b.String()
 }
 
-func (s *UpdateStmt) String() string {
+func (s *UpdateStmt) String() string { return s.text.get(s.render) }
+
+func (s *UpdateStmt) render() string {
 	parts := make([]string, len(s.Set))
 	for i, a := range s.Set {
 		parts[i] = a.Column + " = " + a.Value.String()
@@ -296,7 +320,9 @@ func (s *UpdateStmt) String() string {
 	return out
 }
 
-func (s *DeleteStmt) String() string {
+func (s *DeleteStmt) String() string { return s.text.get(s.render) }
+
+func (s *DeleteStmt) render() string {
 	out := "DELETE FROM " + s.Table
 	if s.Where != nil {
 		out += " WHERE " + s.Where.String()

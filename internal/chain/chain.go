@@ -180,9 +180,14 @@ func (c *Chain) mine(txs [][32]byte, payload []byte) (*Block, error) {
 
 	// Proof-of-work: find a nonce whose header hash has enough leading zero
 	// bits. Real SHA-256, real electricity, real nothing.
+	// The header is encoded once; each attempt only rewrites the nonce,
+	// which is the last field.
+	enc := b.Header.encode()
+	nonce := enc[len(enc)-8:]
 	for {
 		b.Hashes++
-		h := b.Header.Hash()
+		binary.BigEndian.PutUint64(nonce, b.Nonce)
+		h := sha256.Sum256(enc)
 		if leadingZeroBits(h) >= int(c.difficulty) {
 			b.Hash = h
 			break

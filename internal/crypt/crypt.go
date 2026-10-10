@@ -110,6 +110,12 @@ func newCascade(secret []byte, info string) (*cascade, error) {
 		return nil, fmt.Errorf("HKDF: %w", err)
 	}
 	defer clear(keys)
+	return cascadeFromKeys(keys)
+}
+
+// cascadeFromKeys builds a cascade from 64 bytes of key material: the
+// AES-256-GCM key, then the ChaCha20-Poly1305 key.
+func cascadeFromKeys(keys []byte) (*cascade, error) {
 	block, err := aes.NewCipher(keys[:32])
 	if err != nil {
 		return nil, err
@@ -129,17 +135,20 @@ func newCascade(secret []byte, info string) (*cascade, error) {
 
 // seal returns outerNonce | ChaCha20-Poly1305(innerNonce | AES-256-GCM(p)).
 // The two layers use independent keys, so they can share an invocation.
+// Both layers are written into one buffer: the inner ciphertext is produced
+// in place behind the two nonces, and the outer layer encrypts it in place.
 func (c *cascade) seal(p []byte) []byte {
 	var nonce [12]byte
 	copy(nonce[:4], c.fixed[:])
 	binary.BigEndian.PutUint64(nonce[4:], c.invocations.Add(1))
-	return sealWith(c.outer, nonce[:], sealWith(c.inner, nonce[:], p))
-}
-
-func sealWith(a cipher.AEAD, nonce, p []byte) []byte {
-	out := make([]byte, 0, len(nonce)+len(p)+a.Overhead())
-	out = append(out, nonce...)
-	return a.Seal(out, nonce, p, nil)
+	const n = len(nonce)
+	buf := make([]byte, 2*n+len(p)+c.inner.Overhead()+c.outer.Overhead())
+	copy(buf, nonce[:])
+	copy(buf[n:], nonce[:])
+	inner := c.inner.Seal(buf[2*n:2*n], nonce[:], p, nil)
+	plain := buf[n : 2*n+len(inner)]
+	outer := c.outer.Seal(plain[:0], nonce[:], plain, nil)
+	return buf[:n+len(outer)]
 }
 
 // RowKeyEpoch is how many rows share one ML-KEM-768 root before it is
@@ -166,7 +175,7 @@ func (k *Keyring) SealRow(row []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	rowKeys, err := newCascade(rowKey, rowKDFInfo)
+	rowKeys, err := cascadeFromKeys(rowKey)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +211,8 @@ func (k *Keyring) nextRowKey() (key []byte, epoch, index uint64, err error) {
 	var salt [16]byte
 	binary.BigEndian.PutUint64(salt[:8], epoch)
 	binary.BigEndian.PutUint64(salt[8:], index)
-	key, err = hkdf.Key(sha256.New, k.rowRoot, salt[:], rowKDFInfo, 32)
+	// 512 bits: the row's AES-256-GCM key and its ChaCha20-Poly1305 key.
+	key, err = hkdf.Key(sha256.New, k.rowRoot, salt[:], rowKDFInfo, 64)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("HKDF: %w", err)
 	}

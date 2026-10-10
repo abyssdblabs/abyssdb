@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
@@ -421,15 +420,13 @@ func statementKind(s sql.Statement) string {
 
 // encodeKV serializes a key-value pair for the storage layer.
 func encodeKV(s *sql.PutStmt) []byte {
-	var b bytes.Buffer
-	b.WriteString("AKV\x00")
-	fmt.Fprintf(&b, "%d:%s\x00", len(s.Key), s.Key)
+	b := append(make([]byte, 0, 64), "AKV\x00"...)
+	b = appendField(b, s.Key)
 	v := s.Raw
 	if !s.IsRaw {
 		v = sql.NativeString(s.Native)
 	}
-	fmt.Fprintf(&b, "%d:%s\x00", len(v), v)
-	return b.Bytes()
+	return appendField(b, v)
 }
 
 // kvFormats is used by SHOW KEYSPACE.

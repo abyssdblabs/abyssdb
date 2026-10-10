@@ -50,9 +50,23 @@ func operation(s sql.Statement, r *Result) string {
 }
 
 func (e *Engine) notify(ss *Session, s sql.Statement, r *Result, err error, start time.Time) {
+	op := operation(s, r)
+	e.obs.mu.Lock()
+	if e.obs.ops == nil {
+		e.obs.ops = map[string]uint64{}
+	}
+	e.obs.ops[op]++
+	if err != nil {
+		e.obs.err++
+	}
+	observed := len(e.obs.fns) > 0
+	e.obs.mu.Unlock()
+	if !observed {
+		return // nobody is watching: skip building the observation
+	}
 	o := Observation{
 		Statement: s.String(),
-		Operation: operation(s, r),
+		Operation: op,
 		Branch:    ss.branch,
 		User:      ss.loginUser,
 		Start:     start,
@@ -63,13 +77,6 @@ func (e *Engine) notify(ss *Session, s sql.Statement, r *Result, err error, star
 		o.Reported = r.ReportedLatency()
 	}
 	e.obs.mu.Lock()
-	if e.obs.ops == nil {
-		e.obs.ops = map[string]uint64{}
-	}
-	e.obs.ops[o.Operation]++
-	if err != nil {
-		e.obs.err++
-	}
 	fns := append([]func(Observation){}, e.obs.fns...)
 	e.obs.mu.Unlock()
 	for _, fn := range fns {

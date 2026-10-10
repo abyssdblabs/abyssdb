@@ -6,6 +6,7 @@ package engine
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -45,6 +46,9 @@ func (r *Result) AllNotices() []string {
 func (r *Result) ReportedLatency() time.Duration { return 0 }
 
 const (
+	// DefaultBlockSize is how many transactions an AbyssChain block holds.
+	DefaultBlockSize = 1024
+
 	// DefaultEpsilon is the default NullTime clock uncertainty.
 	DefaultEpsilon = 5 * time.Millisecond
 
@@ -101,7 +105,29 @@ type Session struct {
 	lastQuery *sql.SelectStmt
 	wal       []byte // WAL records of the open transaction, written at COMMIT
 	minMsgs   string // client_min_messages, as set by SET
+	quiet     bool   // skip building Result.Debug: the client would not see it
 }
+
+// SetDebug tells the session whether its client receives Result.Debug
+// details. Sessions start with details on; the PostgreSQL protocol turns
+// them off unless client_min_messages asks for debug output.
+func (ss *Session) SetDebug(want bool) {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+	ss.quiet = !want
+}
+
+// debugf formats a debug detail, unless the client would not see it.
+func (ss *Session) debugf(format string, args ...any) []string {
+	if ss.quiet {
+		return nil
+	}
+	return []string{fmt.Sprintf(format, args...)}
+}
+
+// WantsDebug reports whether a client_min_messages level includes debug
+// details (debug1 through debug5).
+func WantsDebug(level string) bool { return strings.HasPrefix(level, "debug") }
 
 // ClientMinMessages is the session's client_min_messages setting, or "" if
 // it was never SET.
@@ -122,7 +148,7 @@ func New(dev *void.Device, opts Options) (*Engine, error) {
 		opts.ChainDifficulty = 12
 	}
 	if opts.BlockSize == 0 {
-		opts.BlockSize = 128
+		opts.BlockSize = DefaultBlockSize
 	}
 	c, err := chain.New(dev, opts.ChainDifficulty, opts.BlockSize)
 	if err != nil {
@@ -293,7 +319,7 @@ func (ss *Session) exec(s sql.Statement) (*Result, error) {
 		rows = len(s.Rows)
 		r = &Result{
 			Tag:   fmt.Sprintf("INSERT 0 %d", rows),
-			Debug: []string{fmt.Sprintf("%d row(s) written to %s", rows, s.Table)},
+			Debug: ss.debugf("%d row(s) written to %s", rows, s.Table),
 		}
 	case *sql.UpdateStmt:
 		if err := ss.e.catalog.checkUpdate(s); err != nil {
@@ -459,14 +485,14 @@ func (ss *Session) persist(s sql.Statement, rows int) (debug, notices []string, 
 			intents[i].Data = sealed
 		}
 		if _, ok := s.(*sql.PutStmt); ok {
-			debug = append(debug, "value sealed under its own unique key, derived from ML-KEM-768")
+			debug = append(debug, ss.debugf("value sealed under its own unique key, derived from ML-KEM-768")...)
 		} else {
-			debug = append(debug, fmt.Sprintf("%d row(s) sealed under %d unique row key(s), derived from ML-KEM-768", len(intents), len(intents)))
+			debug = append(debug, ss.debugf("%d row(s) sealed under %d unique row key(s), derived from ML-KEM-768", len(intents), len(intents))...)
 		}
 	}
 	if ss.inTx {
 		ss.intents = append(ss.intents, intents...)
-		debug = append(debug, fmt.Sprintf("staged %d write intent(s) on %s", len(intents), shardNames(intents)))
+		debug = append(debug, ss.debugf("staged %d write intent(s) on %s", len(intents), shardNames(intents))...)
 		return debug, nil, nil
 	}
 
@@ -547,13 +573,20 @@ func shardNames(intents []txn.Intent) string {
 // columnar-adjacent, compression-optional encoding designed to be written
 // exactly once and read exactly never.
 func encodeRow(row []sql.Expr) []byte {
-	var b strings.Builder
-	b.WriteString("ADF\x00")
+	b := make([]byte, 0, 64)
+	b = append(b, "ADF\x00"...)
 	for _, v := range row {
-		s := v.String()
-		fmt.Fprintf(&b, "%d:%s\x00", len(s), s)
+		b = appendField(b, v.String())
 	}
-	return []byte(b.String())
+	return b
+}
+
+// appendField appends one length-prefixed ADF field: "<len>:<value>\x00".
+func appendField(b []byte, s string) []byte {
+	b = strconv.AppendInt(b, int64(len(s)), 10)
+	b = append(b, ':')
+	b = append(b, s...)
+	return append(b, 0)
 }
 
 // Describe reports the columns a statement's result set will have, and

@@ -101,6 +101,7 @@ func (ss *Session) set(s *sql.SetStmt) *Result {
 	}
 	if strings.EqualFold(s.Name, "client_min_messages") {
 		ss.minMsgs = strings.ToLower(strings.Trim(s.Value, "'\" "))
+		ss.quiet = !WantsDebug(ss.minMsgs)
 	}
 	return &Result{Tag: "SET"}
 }
