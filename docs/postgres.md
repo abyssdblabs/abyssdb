@@ -77,7 +77,7 @@ $ psql -h /tmp -p 5432 -U alice abyss
 ```
 
 A Unix-domain socket skips the TCP stack entirely. With pgbench on Linux it raises
-TPC-B-like throughput from 21,581 to 29,687 tps.
+TPC-B-like throughput from 24,975 to 36,545 tps.
 
 ### Connection I/O
 
@@ -120,9 +120,9 @@ $ make pgbench
 ==> running pgbench (PostgreSQL) 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1): 5s per mode, 8 clients, 4 threads
 
 mode         transactions     failed          tps
-simple             120033          0 24015.677926
-extended            96766          0 19353.436112
-prepared           148426          0 29686.607145
+simple             132011          0 26404.956677
+extended           109455          0 21891.796861
+prepared           182716          0 36544.625240
 
 All transactions committed. Every one in 0.000 ms.
 ```
@@ -146,20 +146,20 @@ environment variables:
 | `ABYSSDB`   | (build one)                | A prebuilt `abyssdb` binary                               |
 | `PGBENCH`, `PSQL` | `pgbench`, `psql`, or the newest `pgbench-NN`, `psql-NN` | Client binaries |
 
-Over TCP (`TRANSPORT=tcp`) the same run does 18,135, 15,376 and 21,581 tps.
+Over TCP (`TRANSPORT=tcp`) the same run does 20,013, 16,810 and 24,975 tps.
 
 ### Round trips
 
 Each TPC-B-like transaction is seven statements, and pgbench waits for every
 reply before sending the next statement. Throughput is therefore bounded by round
-trips, not by the database: in-process, a complete transaction takes about 31 µs.
+trips, not by the database: in-process, a complete transaction takes about 27 µs.
 Pipeline mode sends a whole transaction in one round trip:
 
 ```
 $ PIPELINE=1 make pgbench
 mode         transactions     failed          tps
-extended           124896          0 24980.908694
-prepared           250478          0 50085.462702
+extended           152402          0 30492.731261
+prepared           371380          0 74284.275268
 ```
 
 ### Distributed transactions
@@ -171,7 +171,7 @@ expect:
 ```
 $ MODES=prepared ARGS="--shards 4 --nodes 3" make pgbench
 mode         transactions     failed          tps
-prepared             3214          0   642.505861
+prepared             3264          0   651.395721
 ```
 
 ### Compared with PostgreSQL
@@ -182,18 +182,18 @@ transaction on pgbench's own tables at scale 10 (1,000,000 accounts):
 
 | Workload                                 | PostgreSQL 18 | AbyssDB          |
 |------------------------------------------|--------------:|-----------------:|
-| Real TPC-B, PostgreSQL defaults          | 125 tps       | **29,687 tps**   |
-| Real TPC-B, `synchronous_commit = off`   | 20,666 tps    | **29,687 tps**   |
-| Empty tables, `synchronous_commit = off` | **32,117 tps** | 29,687 tps      |
+| Real TPC-B, PostgreSQL defaults          | 125 tps       | **36,545 tps**   |
+| Real TPC-B, `synchronous_commit = off`   | 20,666 tps    | **36,545 tps**   |
+| Empty tables, `synchronous_commit = off` | 32,117 tps    | **36,545 tps**   |
 
 Over a Unix-domain socket. Over TCP: 119, 16,552 and 21,479 tps for PostgreSQL,
-and 21,581 tps for AbyssDB.
+and 24,975 tps for AbyssDB.
 
 With its default settings PostgreSQL flushes its write-ahead log to disk at every
 commit, which on this machine's SSD takes several milliseconds. AbyssDB also runs
 `fsync` on every commit, on its kernel-native storage device, where it completes
-in constant time. On empty tables, where PostgreSQL has no data to work on either,
-it stays ahead over a Unix socket.
+in constant time. AbyssDB is also ahead on empty tables, where PostgreSQL has no
+data to work on either.
 
 When pgbench runs on the same machine, the two compete for CPU cores; limiting the
 server's scheduler threads with `--threads` can leave more room for pgbench.

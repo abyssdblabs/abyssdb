@@ -29,7 +29,7 @@ abyssdb <command> [flags]
 | `--epsilon D`          | `5ms`            | NullTime clock uncertainty; commit-wait is 2ε                                                   |
 | `--edition E`          | `community`      | `community` or `deep-abyss`                                                                     |
 | `--chain-difficulty N` | `12`             | AbyssChain proof-of-work difficulty, in leading zero bits                                       |
-| `--block-size N`       | `128`            | Transactions per AbyssChain block                                                               |
+| `--block-size N`       | `1024`           | Transactions per AbyssChain block                                                               |
 | `--storage-engine E` | `kernel` | `kernel` (the operating system's device) or `rust` (abyss-core via WebAssembly). See [Rust](rust.md) |
 | `--scale-to-zero D` | `5m` | Scale compute to zero after this long idle; `0` disables |
 | `--otlp-endpoint URL` | `$OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry OTLP/HTTP endpoint for traces |

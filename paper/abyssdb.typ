@@ -584,11 +584,11 @@ server thread per connection. The benchmark is reproducible with `make pgbench`.
     table.hline(stroke: 0.8pt),
     table.header([*Mode*], [*Txns*], [*Failed*], [*TPS*], [*Reported*]),
     table.hline(stroke: 0.5pt),
-    [simple], [120,033], [0], [24,015.7], [0.000 ms],
-    [extended], [96,766], [0], [19,353.4], [0.000 ms],
-    [prepared], [148,426], [0], [29,686.6], [0.000 ms],
-    [prepared, pipelined], [250,478], [0], [50,085.5], [0.000 ms],
-    [prepared, 4#sym.times\3], [3,214], [0], [642.5], [0.000 ms],
+    [simple], [132,011], [0], [26,405.0], [0.000 ms],
+    [extended], [109,455], [0], [21,891.8], [0.000 ms],
+    [prepared], [182,716], [0], [36,544.6], [0.000 ms],
+    [prepared, pipelined], [371,380], [0], [74,284.3], [0.000 ms],
+    [prepared, 4#sym.times\3], [3,264], [0], [651.4], [0.000 ms],
     table.hline(stroke: 0.8pt),
   ),
   caption: [`pgbench` results. Pipeline mode sends each transaction in one round trip. The last row uses
@@ -597,17 +597,16 @@ server thread per connection. The benchmark is reproducible with `make pgbench`.
 
 *Results.* @tab:pgbench shows zero failed transactions in every protocol mode and topology. Wall-clock
 throughput is bounded by round trips between client and server: each transaction requires seven, and
-pipelining them into one raises throughput by 69%. The reported latency is $0.000 thin "ms"$ in every
+pipelining them into one doubles throughput. The reported latency is $0.000 thin "ms"$ in every
 configuration. In-process, a complete TPC-B-like transaction, including SQL parsing, schema validation, a
 unique ML-KEM-768-derived key for the inserted row, the dual-cipher cascade, group commit, and AbyssChain
-proof-of-work amortized over 128-transaction blocks, takes $31 thin mu"s"$ on an Apple M1 Pro.
+proof-of-work amortized over 1,024-transaction blocks, takes $27 thin mu"s"$ on an Apple M1 Pro.
 
 *Comparison with PostgreSQL.* We ran the same workload against PostgreSQL 18 on the same machine
 (@tab:postgres). With its default settings, PostgreSQL flushes its write-ahead log at every commit and is
 bound by the storage device; #AbyssDB also flushes at every commit, on a device for which the flush
-completes in constant time. On empty tables, where PostgreSQL has no data to process either, it remains
-8% ahead; we attribute this to its process-per-connection design, which #AbyssDB approximates with one
-thread per connection.
+completes in constant time. #AbyssDB serves each connection from its own thread, as PostgreSQL does with
+a process, and remains ahead on empty tables, where PostgreSQL has no data to process either.
 
 #figure(
   table(
@@ -616,9 +615,9 @@ thread per connection.
     table.hline(stroke: 0.8pt),
     table.header([*Workload*], [*PostgreSQL 18*], [*#AbyssDB*]),
     table.hline(stroke: 0.5pt),
-    [TPC-B, defaults], [125], [*29,687*],
-    [TPC-B, async commit], [20,666], [*29,687*],
-    [Empty tables, async], [*32,117*], [29,687],
+    [TPC-B, defaults], [125], [*36,545*],
+    [TPC-B, async commit], [20,666], [*36,545*],
+    [Empty tables, async], [32,117], [*36,545*],
     table.hline(stroke: 0.8pt),
   ),
   caption: [Transactions per second, prepared mode, 8 clients, Unix-domain socket, median of several

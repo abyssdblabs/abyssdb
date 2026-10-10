@@ -51,10 +51,11 @@ On top of device encryption, every row gets its own encryption key:
 1. Each device holds a row-key root: a shared secret from a fresh ML-KEM-768
    encapsulation, whose ciphertext is persisted to the key store. The root is
    re-encapsulated every 4,096 rows and on every `ROTATE KEY`.
-2. The row's own key is derived from the root with HKDF-SHA-256, salted with the
-   row's position (root epoch and index), so no two rows ever share a key.
-3. The row is sealed with the AES-256-GCM → ChaCha20-Poly1305 cascade under keys
-   derived from its row key (info `abyssdb row encryption key v1`).
+2. The row's own 512-bit key is derived from the root with HKDF-SHA-256 (info
+   `abyssdb row encryption key v1`), salted with the row's position (root epoch and
+   index), so no two rows ever share a key.
+3. The row is sealed with the AES-256-GCM → ChaCha20-Poly1305 cascade: the first
+   256 bits of its key are the AES key, the last 256 bits the ChaCha20 key.
 4. The row key is envelope-encrypted with the device key and stored with the row.
 5. The plaintext row key is crypto-shredded immediately.
 

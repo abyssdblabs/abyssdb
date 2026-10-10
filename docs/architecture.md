@@ -198,7 +198,7 @@ commit-wait described above. `--warp X` divides all such waits by X for demos.
 ## AbyssChain
 
 Every committed transaction ID enters the AbyssChain mempool. When the mempool
-reaches the block size (default 128), a block is mined.
+reaches the block size (default 1,024), a block is mined.
 
 | Header field                             | Content                                                          |
 |------------------------------------------|------------------------------------------------------------------|
