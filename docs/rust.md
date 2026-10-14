@@ -44,9 +44,11 @@ Go server ──► internal/rustengine ──► wazero (pure-Go WebAssembly ru
   for Rust to dereference. Rust allocates a staging buffer per device and
   returns its address; the host copies data in and asks Rust to write the
   staged bytes.
-- `internal/rustengine`: embeds the module with `go:embed`, instantiates it once
-  per process with [wazero](https://wazero.io), and registers the `rust`
-  storage engine. Every device opens its own handle inside the module.
+- `internal/rustengine`: embeds the module with `go:embed`, compiles it once per
+  process with [wazero](https://wazero.io), and registers the `rust` storage
+  engine. Every device gets its own module instance, with its own linear memory
+  and allocator: a WebAssembly instance is single-threaded, so devices writing
+  concurrently (one per shard, for example) must not share one.
 
 No cgo, no shared libraries, no C toolchain. The Rust engine is sandboxed and
 works on every platform Go supports, including inside the WebAssembly builds of
@@ -60,6 +62,27 @@ AbyssDB itself.
 | `abyss_read_all` | `(handle) -> u32`      | Full scan; returns bytes read              |
 | `abyss_fsync`    | `(handle)`             | Make writes durable                        |
 | `abyss_close`    | `(handle)`             | Close the device                           |
+
+## Performance
+
+The Rust engine writes without leaving the process: a call into WebAssembly
+costs about 0.1 µs, where the kernel engine makes a `write()` system call for
+every record. Measured with `go test ./internal/rustengine -bench .` on an Apple
+M1 Pro, 128-byte records:
+
+| Benchmark                              | `kernel`    | `rust`        |
+|----------------------------------------|------------:|--------------:|
+| Raw store write                        | 1,022 ns/op | **98 ns/op**  |
+| Raw store write, parallel              | 1,752 ns/op | **233 ns/op** |
+| Device write (with the cipher cascade) | 1,892 ns/op | **822 ns/op** |
+
+End to end the difference disappears, because storage is about 1 µs of a
+transaction. `make pgbench` on Linux, prepared, Unix socket, median of three:
+
+| Engine   | tps    |
+|----------|-------:|
+| `kernel` | 36,209 |
+| `rust`   | 36,203 |
 
 ## Building
 
