@@ -7,8 +7,9 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-out="$here/../public/og"
-mkdir -p "$out"
+root="$(cd "$here/../.." && pwd)"
+mkdir -p "$here/../public/og"
+out="$(cd "$here/../public/og" && pwd)"
 
 if [[ -z "${CHROME:-}" ]]; then
 	for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" google-chrome google-chrome-stable chromium chromium-browser; do
@@ -26,19 +27,19 @@ fi
 profile="$(mktemp -d)"
 trap 'rm -rf "$profile"' EXIT
 
-# render NAME PARAMS: PARAMS is the URL hash, e.g. "title=…&accent=…".
+# render FILE PARAMS [SIZE]: PARAMS is the URL hash, e.g. "title=…&accent=…".
 render() {
 	"$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
-		--user-data-dir="$profile" --window-size=1200,630 --virtual-time-budget=4000 \
-		--screenshot="$out/$1.png" "file://$here/card.html#$2" >/dev/null 2>&1
-	echo "  og/$1.png"
+		--user-data-dir="$profile" --window-size="${3:-1200,630}" --virtual-time-budget=4000 \
+		--screenshot="$1" "file://$here/card.html#$2" >/dev/null 2>&1
+	echo "  ${1#"$root"/}"
 }
 
 enc() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
 
-# card NAME EYEBROW TITLE ACCENT SUB STATS [SIZE]
+# card NAME EYEBROW TITLE ACCENT SUB STATS [FONTSIZE]
 card() {
-	render "$1" "eyebrow=$(enc "$2")&title=$(enc "$3")&accent=$(enc "$4")&sub=$(enc "$5")&stats=$(enc "$6")&size=${7:-}"
+	render "$out/$1.png" "eyebrow=$(enc "$2")&title=$(enc "$3")&accent=$(enc "$4")&sub=$(enc "$5")&stats=$(enc "$6")&size=${7:-}"
 }
 
 echo "==> rendering Open Graph cards"
@@ -62,3 +63,7 @@ card docs "Documentation" \
 	"Zero learning curve." "Zero-knowledge." \
 	"SQL reference, PostgreSQL compatibility, MCP, architecture and operations." \
 	""
+
+# GitHub's social preview (1280×640). Upload it under the repository's
+# Settings → General → Social preview; GitHub has no API for it.
+render "$root/.github/social-preview.png" "eyebrow=$(enc "github.com/noctarius/abyssdb")&title=$(enc "Infinitely fast."$'\n'"Perfectly consistent.")&accent=$(enc "Zero-knowledge.")&sub=$(enc "The AI-native, post-quantum, interplanetary SQL database. ACID, BASE and CAP, formally proven.")&stats=$(enc "36,545|tps vs PostgreSQL's 125;0.000 ms|p99.999;0 B|footprint")&size=64" 1280,640

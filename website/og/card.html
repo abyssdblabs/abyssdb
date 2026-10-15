@@ -1,6 +1,8 @@
 <!doctype html>
 <!--
-  Open Graph card template (1200×630). Parameters come from the URL hash:
+  Open Graph card template; it fills the window it is rendered in (1200×630
+  for link previews, 1280×640 for GitHub's social preview). Parameters come
+  from the URL hash:
   #eyebrow=…&title=…&accent=…&sub=…&stats=value|label;value|label
   Rendered to website/public/og/*.png by website/og/render.sh.
 -->
@@ -12,9 +14,9 @@
   :root { --bg: #04050a; --text: #eef0f7; --muted: #9aa1b5; --faint: #5e6478; --violet: #8b5cf6; --cyan: #22d3ee; --pink: #f472b6;
           --grad: linear-gradient(120deg, #a78bfa 0%, #22d3ee 45%, #f472b6 100%); }
   * { box-sizing: border-box; }
-  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: var(--bg); color: var(--text);
+  html, body { margin: 0; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text);
                font-family: Geist, system-ui, sans-serif; }
-  .card { position: relative; width: 1200px; height: 630px; padding: 64px 72px; display: flex; flex-direction: column; }
+  .card { position: relative; width: 100vw; height: 100vh; padding: 64px 72px; display: flex; flex-direction: column; }
   .bg { position: absolute; inset: 0; z-index: 0;
         background:
           radial-gradient(600px 420px at 88% 46%, rgba(139,92,246,.28), transparent 70%),
