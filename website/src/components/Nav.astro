@@ -23,9 +23,31 @@ const links = [
         <span>★ ∞</span>
       </a>
       <a class="btn btn-primary small" href={url("/playground")}>Start for free</a>
+      <button type="button" class="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu" data-menu-btn>
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </div>
+  <nav class="mobile" id="mobile-menu" aria-label="Main" data-menu hidden>
+    {links.map(([label, href]) => <a href={url(href)}>{label}</a>)}
+    <a href="https://github.com/noctarius/abyssdb">GitHub</a>
+  </nav>
 </header>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>("[data-menu-btn]");
+  const menu = document.querySelector<HTMLElement>("[data-menu]");
+  const setOpen = (open: boolean) => {
+    if (!btn || !menu) return;
+    menu.hidden = !open;
+    btn.setAttribute("aria-expanded", String(open));
+    btn.classList.toggle("open", open);
+  };
+  btn?.addEventListener("click", () => setOpen(menu?.hidden ?? false));
+  menu?.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest("a")) setOpen(false); });
+  addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+  matchMedia("(min-width: 901px)").addEventListener("change", (e) => { if (e.matches) setOpen(false); });
+</script>
 
 <style>
   .nav {
@@ -36,13 +58,25 @@ const links = [
   }
   .inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 24px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 18px; letter-spacing: -0.02em; }
-  nav { display: flex; gap: 28px; font-size: 14.5px; color: var(--muted); }
-  nav a:hover { color: var(--text); }
+  nav:not(.mobile) { display: flex; gap: 28px; font-size: 14.5px; color: var(--muted); }
+  nav:not(.mobile) a:hover { color: var(--text); }
   .actions { display: flex; align-items: center; gap: 12px; }
   .stars { display: flex; align-items: center; gap: 8px; font: 500 13px var(--mono); color: var(--muted);
            padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; }
   .stars:hover { color: var(--text); }
   .small { height: 38px; padding: 0 16px; font-size: 14px; }
-  @media (max-width: 900px) { nav { display: none; } }
+  .menu-btn { display: none; width: 40px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+              flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+  .menu-btn span { width: 16px; height: 2px; border-radius: 2px; background: var(--text); transition: transform .2s ease, opacity .2s ease; }
+  .menu-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .menu-btn.open span:nth-child(2) { opacity: 0; }
+  .menu-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  nav.mobile { display: flex; flex-direction: column; padding: 8px 16px 18px; border-top: 1px solid var(--border);
+               background: rgba(4, 5, 10, 0.92); }
+  nav.mobile[hidden] { display: none; }
+  nav.mobile a { padding: 13px 4px; font-size: 17px; color: var(--text); border-bottom: 1px solid var(--border); }
+  nav.mobile a:last-child { border-bottom: 0; }
+  @media (max-width: 900px) { nav:not(.mobile) { display: none; } .menu-btn { display: flex; } }
+  @media (min-width: 901px) { nav.mobile { display: none; } }
   @media (max-width: 480px) { .stars { display: none; } }
 </style>

@@ -173,6 +173,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
   .search-box :global(mark) { background: rgba(139,92,246,.35); color: var(--text); border-radius: 3px; }
 
   @media (max-width: 1180px) { .docs { grid-template-columns: 230px minmax(0, 1fr); } .toc { display: none; } }
+  @media (hover: none), (max-width: 900px) { .search-btn kbd { display: none; } }
   @media (max-width: 900px) {
     .docs { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 24px; }
     .sidebar { position: static; max-height: none; }
