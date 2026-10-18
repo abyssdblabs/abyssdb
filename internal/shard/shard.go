@@ -43,6 +43,10 @@ func (s *Shard) RoundTrip() time.Duration {
 // is replicated, on its local void otherwise. Off-world shards additionally
 // wait for the light-speed round trip, because physics is not eventually
 // consistent.
+// Retains reports whether Write may keep a reference to its data after it
+// returns (replicated shards queue it in the Raft log).
+func (s *Shard) Retains() bool { return s.Group != nil }
+
 func (s *Shard) Write(data []byte) error {
 	if !s.Region.Terrestrial() {
 		nulltime.Sleep(s.RoundTrip())

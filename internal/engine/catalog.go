@@ -138,10 +138,12 @@ func (c *catalog) createTable(s *sql.CreateTableStmt) error {
 // dropTable forgets a table's definition. Undeclared tables are schemaless
 // and implicitly exist, so dropping one always succeeds.
 func (c *catalog) dropTable(s *sql.DropTableStmt) error {
-	_, full := qualify(s.Table)
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	delete(c.tables, full)
+	for _, t := range s.Tables {
+		_, full := qualify(t)
+		delete(c.tables, full)
+	}
 	return nil
 }
 
@@ -193,6 +195,21 @@ func (c *catalog) alterTable(s *sql.AlterTableStmt) error {
 			return err
 		}
 		col.Type = s.Type
+	case "ADD PRIMARY KEY":
+		for _, col := range t.columns {
+			if col.PrimaryKey {
+				return fmt.Errorf("multiple primary keys for table %q are not allowed", t.short())
+			}
+		}
+		for _, name := range s.Columns {
+			if _, col := t.column(name); col == nil {
+				return fmt.Errorf("column %q of relation %q does not exist", name, t.short())
+			}
+		}
+		for _, name := range s.Columns {
+			_, col := t.column(name)
+			col.PrimaryKey, col.NotNull = true, true
+		}
 	case "RENAME TABLE":
 		schema, _ := qualify(s.Table)
 		next := schema + "." + strings.ToLower(s.NewName)
@@ -456,4 +473,80 @@ func checkLength(base string, args []int, s string) error {
 		return fmt.Errorf("value too long for type %s(%d)", name, args[0])
 	}
 	return nil
+}
+
+// selectShape returns a SELECT's result columns and their SQL types. For a
+// declared table, '*' expands to its columns and column references carry
+// their declared types; otherwise types are unknown ("").
+func (e *Engine) selectShape(s *sql.SelectStmt) (cols, types []string) {
+	var table []sql.ColumnDef
+	if s.From != "" {
+		_, full := qualify(s.From)
+		e.catalog.mu.Lock()
+		if t := e.catalog.tables[full]; t != nil {
+			table = append(table, t.columns...)
+		}
+		e.catalog.mu.Unlock()
+	}
+	typeOf := func(x sql.Expr) string {
+		if id, ok := x.(*sql.Ident); ok {
+			for _, c := range table {
+				if strings.EqualFold(c.Name, id.Name) {
+					return c.Type
+				}
+			}
+		}
+		return ""
+	}
+	for _, c := range s.Columns {
+		switch {
+		case c.Expr == nil:
+			// '*' expands to every column of a declared table.
+			for _, col := range table {
+				cols, types = append(cols, col.Name), append(types, col.Type)
+			}
+		case c.Alias != "":
+			cols, types = append(cols, c.Alias), append(types, typeOf(c.Expr))
+		case isIdent(c.Expr):
+			cols, types = append(cols, c.Expr.String()), append(types, typeOf(c.Expr))
+		default:
+			cols, types = append(cols, "?column?"), append(types, "")
+		}
+	}
+	return cols, types
+}
+
+// DescribeTypes is Describe with SQL types, for the PostgreSQL protocol.
+func (ss *Session) DescribeTypes(s sql.Statement) (cols, types []string, ok bool) {
+	if sel, isSelect := s.(*sql.SelectStmt); isSelect {
+		cols, types = ss.e.selectShape(sel)
+		return cols, types, true
+	}
+	cols, ok = Describe(s)
+	return cols, nil, ok
+}
+
+// CopyTypes returns the SQL types of a COPY's columns, "" where unknown.
+func (ss *Session) CopyTypes(s *sql.CopyStmt) []string {
+	_, full := qualify(s.Table)
+	ss.e.catalog.mu.Lock()
+	defer ss.e.catalog.mu.Unlock()
+	t := ss.e.catalog.tables[full]
+	if t == nil {
+		return make([]string, len(s.Columns))
+	}
+	if len(s.Columns) == 0 {
+		types := make([]string, len(t.columns))
+		for i, c := range t.columns {
+			types[i] = c.Type
+		}
+		return types
+	}
+	types := make([]string, len(s.Columns))
+	for i, name := range s.Columns {
+		if _, c := t.column(name); c != nil {
+			types[i] = c.Type
+		}
+	}
+	return types
 }

@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -23,6 +24,7 @@ import (
 // type system's most powerful feature, us never appending to it.
 type Result struct {
 	Columns []string
+	Types   []string // SQL type per column, "" if unknown (undeclared tables)
 	Rows    [][]string
 	Tag     string   // command tag, e.g. "INSERT 0 3"
 	Notices []string // where AbyssDB keeps its personality
@@ -106,6 +108,11 @@ type Session struct {
 	wal       []byte // WAL records of the open transaction, written at COMMIT
 	minMsgs   string // client_min_messages, as set by SET
 	quiet     bool   // skip building Result.Debug: the client would not see it
+
+	// COPY FROM STDIN in progress
+	copyRows    int
+	copyStart   time.Time
+	copyNotices []string
 }
 
 // SetDebug tells the session whether its client receives Result.Debug
@@ -332,7 +339,14 @@ func (ss *Session) exec(s sql.Statement) (*Result, error) {
 			r.Notices = append(r.Notices, "DELETE without WHERE: AbyssDB guarantees zero data loss from this statement")
 		}
 	case *sql.TruncateStmt:
-		r = &Result{Tag: "TRUNCATE TABLE", Notices: []string{"truncated in constant time, independent of table size"}}
+		r = &Result{Tag: "TRUNCATE TABLE", Notices: []string{
+			fmt.Sprintf("truncated %d table(s) in constant time, independent of table size", len(s.Tables))}}
+	case *sql.CopyStmt:
+		if s.From {
+			return nil, errors.New("COPY FROM STDIN needs a client that streams rows: use the PostgreSQL protocol (psql's \\copy, pgbench -i)")
+		}
+		// COPY TO STDOUT: every row of the table, streamed.
+		return &Result{Tag: "COPY 0"}, nil
 	case *sql.CreateTableStmt:
 		if err := ss.e.catalog.createTable(s); err != nil {
 			return nil, err
@@ -372,6 +386,11 @@ func (ss *Session) exec(s sql.Statement) (*Result, error) {
 		r = &Result{Tag: "DROP INDEX"}
 	case *sql.VacuumStmt:
 		r = &Result{Tag: "VACUUM", Notices: []string{"vacuum complete: 0 bytes to reclaim, table bloat 0.00%"}}
+		for _, o := range s.Options {
+			if o == "ANALYZE" {
+				r.Notices = append(r.Notices, "statistics updated: every row sampled, estimates exact")
+			}
+		}
 	default:
 		return nil, fmt.Errorf("statement type %T is not supported", s)
 	}
@@ -389,7 +408,8 @@ func (e *Engine) execSelect(s *sql.SelectStmt) (*Result, error) {
 	if _, err := e.dev.ReadAll(); err != nil {
 		return nil, err
 	}
-	r := &Result{Columns: selectColumns(s), Tag: "SELECT 0"}
+	cols, types := e.selectShape(s)
+	r := &Result{Columns: cols, Types: types, Tag: "SELECT 0"}
 	if usesVectorSearch(s) {
 		r.Notices = append(r.Notices,
 			"vector search: exact nearest neighbors (precision 100%, recall 100%)")
@@ -477,12 +497,8 @@ func (ss *Session) persist(s sql.Statement, rows int) (debug, notices []string, 
 		}
 		// Row-level encryption: every row is sealed under its own key before
 		// it is routed to its shard (which then encrypts it again).
-		for i := range intents {
-			sealed, err := e.dev.SealRow(intents[i].Data)
-			if err != nil {
-				return nil, nil, err
-			}
-			intents[i].Data = sealed
+		if err := sealIntents(e, intents); err != nil {
+			return nil, nil, err
 		}
 		if _, ok := s.(*sql.PutStmt); ok {
 			debug = append(debug, ss.debugf("value sealed under its own unique key, derived from ML-KEM-768")...)
@@ -539,11 +555,11 @@ func tableOf(s sql.Statement) string {
 	case *sql.DeleteStmt:
 		return s.Table
 	case *sql.TruncateStmt:
-		return s.Table
+		return s.Tables[0]
 	case *sql.CreateTableStmt:
 		return s.Table
 	case *sql.DropTableStmt:
-		return s.Table
+		return s.Tables[0]
 	case *sql.AlterTableStmt:
 		return s.Table
 	case *sql.CreateIndexStmt:

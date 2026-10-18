@@ -25,7 +25,7 @@ psql "postgresql://alice@localhost:5432/abyss?sslmode=disable"
 | Errors (`ErrorResponse`)                     | ✅ with SQLSTATE; syntax errors report `42601` and a position       |
 | Transaction status in `ReadyForQuery`        | ✅ `I` (idle) and `T` (in transaction)                              |
 | Query cancellation                           | Accepted; queries complete in 0.000 ms, before a cancel can arrive  |
-| `COPY`                                       | Not supported                                                       |
+| `COPY`                                       | ✅ `FROM STDIN` (text and binary formats) and `TO STDOUT`             |
 
 ### Server parameters
 
@@ -41,14 +41,22 @@ psql "postgresql://alice@localhost:5432/abyss?sslmode=disable"
 
 ### Types
 
-Result columns are reported as `text` (OID 25). Statement parameters are
-described as unspecified (OID 0), so drivers send parameters of any type.
+Result columns of declared tables are reported with their PostgreSQL types:
+`boolean`, `smallint`, `integer`, `bigint`, `real`, `double precision`,
+`varchar`, `char`, `date`, `timestamp`, `timestamptz`, `uuid` and `json`. Other
+columns, and columns of undeclared tables, are reported as `text` (OID 25).
+Statement parameters are described as unspecified (OID 0), so drivers send
+parameters of any type. Binary `COPY` decodes each value by the type its column
+is reported as, so drivers such as pgx's `CopyFrom` load integers, booleans and
+timestamps natively.
 
 ### System catalog
 
 Queries against `pg_catalog` and `information_schema` are answered with an
 exact, empty result set. `psql`'s `\d`, `\dt`, `\dn`, `\di`, `\du` and `\l`
-commands work out of the box.
+commands work out of the box. The table-kind lookup that clients such as pgbench
+run before `COPY` (`SELECT relkind FROM pg_catalog.pg_class WHERE oid =
+$1::regclass`) answers `r`, an ordinary table, for every declared table.
 
 ## Clients
 
@@ -209,12 +217,39 @@ $ psql -f scripts/pgbench/schema.sql
 $ pgbench -n -M prepared -c 8 -j 4 -T 5 -f scripts/pgbench/tpcb-like.sql
 ```
 
-pgbench's built-in scripts read the `pgbench_branches` row count at startup, and
-`pgbench -i` uses multi-table `DROP TABLE`; use the custom script instead.
+### Initialization with `pgbench -i`
+
+`pgbench -i` runs unmodified: it drops and creates the four pgbench tables,
+loads them with `COPY`, vacuums them and adds their primary keys. Every row is
+validated and sealed under its own key:
+
+```
+$ pgbench -i -s 100
+dropping old tables...
+creating tables...
+generating data (client-side)...
+vacuuming...
+creating primary keys...
+done in 27.84 s (drop tables 0.00 s, create tables 0.00 s, client-side generate 27.84 s, vacuum 0.00 s, primary keys 0.00 s).
+```
+
+| `pgbench -i`, Linux, Unix socket | Scale 10 (1,000,000 rows) | Scale 100 (10,000,000 rows) |
+|----------------------------------|--------------------------:|----------------------------:|
+| PostgreSQL 18                    | 1.59 s                    | 18.71 s                     |
+| AbyssDB                          | 2.77 s                    | 27.84 s                     |
+| AbyssDB, `--row-keys=false`      | **1.23 s**                | **12.54 s**                 |
+
+A unique key per row costs about 2.2× in bulk loads: every row needs its own
+AES and ChaCha20 key schedule. Without row-level encryption, AbyssDB loads
+pgbench's tables faster than PostgreSQL.
+
+pgbench's built-in transaction scripts read the scale from
+`SELECT count(*) FROM pgbench_branches` before they start, and that query returns
+no rows. Run the TPC-B-like workload as a custom script, as `make pgbench` does.
 
 ## Differences from PostgreSQL
 
 AbyssQL covers the statements in the [SQL reference](sql-reference.md). Not
-supported: joins, `GROUP BY`, subqueries, `COPY`, table constraints other than
+supported: joins, `GROUP BY`, subqueries, `COPY` in CSV format, table constraints other than
 `PRIMARY KEY` and `NOT NULL`, multi-word type names such as `DOUBLE PRECISION`,
 and `::` casts.

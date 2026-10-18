@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/noctarius/abyssdb/internal/sql"
 )
@@ -23,6 +24,9 @@ func alterTable(s *sql.AlterTableStmt) *Result {
 	case "ALTER COLUMN TYPE":
 		r.Notices = append(r.Notices, onlineSchemaChange,
 			fmt.Sprintf("all existing values of %s converted to %s", s.Name, s.Type))
+	case "ADD PRIMARY KEY":
+		r.Notices = append(r.Notices, onlineSchemaChange,
+			fmt.Sprintf("primary key (%s) validated: uniqueness verified across all existing rows", strings.Join(s.Columns, ", ")))
 	case "DROP COLUMN", "RENAME COLUMN", "RENAME TABLE":
 		r.Notices = append(r.Notices, onlineSchemaChange)
 	}

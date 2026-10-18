@@ -54,3 +54,28 @@ func TestParseErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestParsePgbenchInit(t *testing.T) {
+	cases := map[string]string{
+		"drop table if exists pgbench_accounts, pgbench_branches":        "DROP TABLE IF EXISTS pgbench_accounts, pgbench_branches",
+		"create unlogged table t(id int not null) with (fillfactor=100)": "CREATE UNLOGGED TABLE t (id INT NOT NULL) WITH (fillfactor=100)",
+		"truncate table a, b":                                "TRUNCATE a, b",
+		"copy pgbench_accounts from stdin with (freeze on)":  "COPY pgbench_accounts FROM STDIN WITH (freeze on)",
+		"copy t (a, b) from stdin binary":                    "COPY t (a, b) FROM STDIN WITH (binary)",
+		"copy t to stdout":                                   "COPY t TO STDOUT",
+		"vacuum analyze pgbench_branches":                    "VACUUM ANALYZE pgbench_branches",
+		"vacuum (verbose, analyze) a, b":                     "VACUUM VERBOSE ANALYZE a, b",
+		"alter table pgbench_branches add primary key (bid)": "ALTER TABLE pgbench_branches ADD PRIMARY KEY (bid)",
+		"alter table t add column c int":                     "ALTER TABLE t ADD COLUMN c INT",
+	}
+	for in, want := range cases {
+		s, err := ParseOne(in)
+		if err != nil {
+			t.Errorf("%q: %v", in, err)
+			continue
+		}
+		if got := s.String(); got != want {
+			t.Errorf("%q:\n got  %s\n want %s", in, got, want)
+		}
+	}
+}

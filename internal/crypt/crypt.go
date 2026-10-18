@@ -16,12 +16,16 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hkdf"
+	"crypto/hmac"
 	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"hash"
 	"io"
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -65,7 +69,8 @@ type Keyring struct {
 	// from which every row's unique key is derived. Replaced every
 	// RowKeyEpoch rows and on rotation.
 	rowMu    sync.Mutex
-	rowRoot  []byte
+	rowRoot  []byte    // the root's HKDF pseudorandom key
+	rowMAC   hash.Hash // HMAC-SHA-256 keyed with rowRoot, for HKDF-Expand
 	rowEpoch uint64
 	rowCount uint64
 }
@@ -89,6 +94,16 @@ func (k *Keyring) Seal(p []byte) []byte {
 	return k.aead.Load().seal(p)
 }
 
+// SealAppend is Seal, appending the sealed message to dst.
+func (k *Keyring) SealAppend(dst, p []byte) []byte {
+	Stats.BytesEncrypted.Add(uint64(len(p)))
+	c := k.aead.Load()
+	if cap(dst)-len(dst) < c.sealedLen(len(p)) {
+		dst = append(make([]byte, 0, len(dst)+c.sealedLen(len(p))), dst...)
+	}
+	return c.sealTo(dst, p)
+}
+
 // cascade is dual-cipher, algorithm-agile, crypto-diverse encryption: the
 // plaintext is sealed with AES-256-GCM, and the result is sealed again with
 // ChaCha20-Poly1305 under an independent key. An attacker must break both,
@@ -110,11 +125,19 @@ func newCascade(secret []byte, info string) (*cascade, error) {
 		return nil, fmt.Errorf("HKDF: %w", err)
 	}
 	defer clear(keys)
-	return cascadeFromKeys(keys)
+	c, err := cascadeFromKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+	// A device key encrypts many messages: the nonce's fixed field is random.
+	_, _ = rand.Read(c.fixed[:])
+	return c, nil
 }
 
 // cascadeFromKeys builds a cascade from 64 bytes of key material: the
-// AES-256-GCM key, then the ChaCha20-Poly1305 key.
+// AES-256-GCM key, then the ChaCha20-Poly1305 key. Its nonce's fixed field is
+// zero, which is safe for a key that encrypts exactly one message (a row
+// key): a nonce can only repeat under a key that is used twice.
 func cascadeFromKeys(keys []byte) (*cascade, error) {
 	block, err := aes.NewCipher(keys[:32])
 	if err != nil {
@@ -128,27 +151,41 @@ func cascadeFromKeys(keys []byte) (*cascade, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &cascade{inner: inner, outer: outer}
-	_, _ = rand.Read(c.fixed[:])
-	return c, nil
+	return &cascade{inner: inner, outer: outer}, nil
 }
 
 // seal returns outerNonce | ChaCha20-Poly1305(innerNonce | AES-256-GCM(p)).
 // The two layers use independent keys, so they can share an invocation.
+// sealedLen is the length of seal(p).
+func (c *cascade) sealedLen(n int) int { return 24 + n + c.inner.Overhead() + c.outer.Overhead() }
+
+// sealTo appends seal(p) to dst, which must have room for sealedLen(len(p)).
+func (c *cascade) sealTo(dst, p []byte) []byte {
+	start := len(dst)
+	dst = dst[:start+c.sealedLen(len(p))]
+	c.sealInto(dst[start:], p)
+	return dst
+}
+
 // Both layers are written into one buffer: the inner ciphertext is produced
 // in place behind the two nonces, and the outer layer encrypts it in place.
 func (c *cascade) seal(p []byte) []byte {
+	buf := make([]byte, c.sealedLen(len(p)))
+	c.sealInto(buf, p)
+	return buf
+}
+
+// sealInto writes seal(p) into buf, which is exactly sealedLen(len(p)) long.
+func (c *cascade) sealInto(buf, p []byte) {
 	var nonce [12]byte
 	copy(nonce[:4], c.fixed[:])
 	binary.BigEndian.PutUint64(nonce[4:], c.invocations.Add(1))
 	const n = len(nonce)
-	buf := make([]byte, 2*n+len(p)+c.inner.Overhead()+c.outer.Overhead())
 	copy(buf, nonce[:])
 	copy(buf[n:], nonce[:])
 	inner := c.inner.Seal(buf[2*n:2*n], nonce[:], p, nil)
 	plain := buf[n : 2*n+len(inner)]
-	outer := c.outer.Seal(plain[:0], nonce[:], plain, nil)
-	return buf[:n+len(outer)]
+	c.outer.Seal(plain[:0], nonce[:], plain, nil)
 }
 
 // RowKeyEpoch is how many rows share one ML-KEM-768 root before it is
@@ -171,52 +208,116 @@ const rootRecordType = "ABYSS-ROOT"
 //
 // Record layout: "ABYSS-ROW\0" | epoch | index | wrapped row key | row.
 func (k *Keyring) SealRow(row []byte) ([]byte, error) {
-	rowKey, epoch, index, err := k.nextRowKey()
+	recs, err := k.SealRows([][]byte{row})
 	if err != nil {
 		return nil, err
 	}
-	rowKeys, err := cascadeFromKeys(rowKey)
-	if err != nil {
-		return nil, err
-	}
-	Stats.RowKeys.Add(1)
-	sealed := rowKeys.seal(row)
-
-	var rec []byte
-	rec = append(rec, rowRecordType...)
-	rec = binary.BigEndian.AppendUint64(rec, epoch)
-	rec = binary.BigEndian.AppendUint64(rec, index)
-	rec = append(rec, k.Seal(rowKey)...) // envelope encryption
-	rec = append(rec, sealed...)
-
-	// Crypto-shred the row key. The row is now protected by a key that no
-	// longer exists, which is the gold standard of key management.
-	clear(rowKey)
-	Stats.RowKeysShredded.Add(1)
-	return rec, nil
+	return recs[0], nil
 }
 
-// nextRowKey derives the next row's unique key, encapsulating a new ML-KEM-768
-// root first if the current one is used up.
-func (k *Keyring) nextRowKey() (key []byte, epoch, index uint64, err error) {
-	k.rowMu.Lock()
-	defer k.rowMu.Unlock()
-	if k.rowRoot == nil || k.rowCount >= RowKeyEpoch {
-		if err := k.newRowRootLocked(); err != nil {
-			return nil, 0, 0, err
+// SealRows seals a batch of rows, each under its own key. The keys are
+// derived in order under one lock; the encryption then runs in parallel
+// across cores for large batches.
+func (k *Keyring) SealRows(rows [][]byte) ([][]byte, error) {
+	keys := make([]byte, rowKeySize*len(rows))
+	pos := make([][2]uint64, len(rows)) // epoch, index
+	if err := k.deriveRowKeys(keys, pos); err != nil {
+		return nil, err
+	}
+	recs := make([][]byte, len(rows))
+	seal := func(lo, hi int) error {
+		for i := lo; i < hi; i++ {
+			key := keys[i*rowKeySize : (i+1)*rowKeySize]
+			rowKeys, err := cascadeFromKeys(key)
+			if err != nil {
+				return err
+			}
+			recs[i] = k.rowRecord(pos[i], key, rowKeys, rows[i])
+			// Crypto-shred the row key. The row is now protected by a key that
+			// no longer exists, which is the gold standard of key management.
+			clear(key)
+		}
+		return nil
+	}
+	workers := min(runtime.GOMAXPROCS(0), 8, len(rows)/512)
+	if workers <= 1 {
+		if err := seal(0, len(rows)); err != nil {
+			return nil, err
+		}
+	} else {
+		var wg sync.WaitGroup
+		errs := make([]error, workers)
+		chunk := (len(rows) + workers - 1) / workers
+		for w := range workers {
+			lo, hi := w*chunk, min((w+1)*chunk, len(rows))
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				errs[w] = seal(lo, hi)
+			}()
+		}
+		wg.Wait()
+		if err := errors.Join(errs...); err != nil {
+			return nil, err
 		}
 	}
-	epoch, index = k.rowEpoch, k.rowCount
-	k.rowCount++
-	var salt [16]byte
-	binary.BigEndian.PutUint64(salt[:8], epoch)
-	binary.BigEndian.PutUint64(salt[8:], index)
-	// 512 bits: the row's AES-256-GCM key and its ChaCha20-Poly1305 key.
-	key, err = hkdf.Key(sha256.New, k.rowRoot, salt[:], rowKDFInfo, 64)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("HKDF: %w", err)
+	Stats.RowKeys.Add(uint64(len(rows)))
+	Stats.RowKeysShredded.Add(uint64(len(rows)))
+	return recs, nil
+}
+
+// rowKeySize is a row key: the AES-256-GCM key and the ChaCha20-Poly1305 key.
+const rowKeySize = 64
+
+// rowRecord builds "ABYSS-ROW\0" | epoch | index | wrapped row key | row,
+// allocated once at its final size.
+func (k *Keyring) rowRecord(pos [2]uint64, key []byte, rowKeys *cascade, row []byte) []byte {
+	wrapped := k.Seal(key) // envelope encryption under the device key
+	n := len(rowRecordType) + 16 + len(wrapped) + rowKeys.sealedLen(len(row))
+	rec := make([]byte, 0, n)
+	rec = append(rec, rowRecordType...)
+	rec = binary.BigEndian.AppendUint64(rec, pos[0])
+	rec = binary.BigEndian.AppendUint64(rec, pos[1])
+	rec = append(rec, wrapped...)
+	return rowKeys.sealTo(rec, row)
+}
+
+// deriveRowKeys fills keys with one 512-bit key per row and records each
+// row's position (root epoch, index). Each key is HKDF-SHA-256 Expand of the
+// root's pseudorandom key, with the row's position in the info: unique per
+// row. The root is re-encapsulated every RowKeyEpoch rows.
+func (k *Keyring) deriveRowKeys(keys []byte, pos [][2]uint64) error {
+	k.rowMu.Lock()
+	defer k.rowMu.Unlock()
+	var info [len(rowKDFInfo) + 16]byte
+	copy(info[:], rowKDFInfo)
+	var t [sha256.Size]byte
+	for i := range pos {
+		if k.rowRoot == nil || k.rowCount >= RowKeyEpoch {
+			if err := k.newRowRootLocked(); err != nil {
+				return err
+			}
+		}
+		pos[i] = [2]uint64{k.rowEpoch, k.rowCount}
+		k.rowCount++
+		binary.BigEndian.PutUint64(info[len(rowKDFInfo):], pos[i][0])
+		binary.BigEndian.PutUint64(info[len(rowKDFInfo)+8:], pos[i][1])
+		// HKDF-Expand (RFC 5869): T(1) = HMAC(PRK, info | 1),
+		// T(2) = HMAC(PRK, T(1) | info | 2).
+		out := keys[i*rowKeySize : (i+1)*rowKeySize]
+		mac := k.rowMAC
+		mac.Reset()
+		mac.Write(info[:])
+		mac.Write([]byte{1})
+		copy(out[:32], mac.Sum(t[:0]))
+		mac.Reset()
+		mac.Write(out[:32])
+		mac.Write(info[:])
+		mac.Write([]byte{2})
+		copy(out[32:], mac.Sum(t[:0]))
 	}
-	return key, epoch, index, nil
+	clear(t[:])
+	return nil
 }
 
 // newRowRootLocked encapsulates a fresh ML-KEM-768 root and persists its
@@ -227,8 +328,15 @@ func (k *Keyring) newRowRootLocked() error {
 		return fmt.Errorf("ML-KEM key generation: %w", err)
 	}
 	shared, ciphertext := dk.EncapsulationKey().Encapsulate()
+	// HKDF-Extract once per root; every row key is an HKDF-Expand of it.
+	prk, err := hkdf.Extract(sha256.New, shared, nil)
+	if err != nil {
+		return fmt.Errorf("HKDF: %w", err)
+	}
+	clear(shared)
 	clear(k.rowRoot)
-	k.rowRoot, k.rowCount = shared, 0
+	k.rowRoot, k.rowCount = prk, 0
+	k.rowMAC = hmac.New(sha256.New, prk)
 	k.rowEpoch++
 	Stats.RowKeyRoots.Add(1)
 
@@ -247,7 +355,7 @@ func (k *Keyring) shredRowRoot() {
 	k.rowMu.Lock()
 	defer k.rowMu.Unlock()
 	clear(k.rowRoot)
-	k.rowRoot = nil
+	k.rowRoot, k.rowMAC = nil, nil
 }
 
 // Rotate generates a fresh key and crypto-shreds the old one. All existing

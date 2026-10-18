@@ -80,7 +80,9 @@ type DeleteStmt struct {
 type CreateTableStmt struct {
 	Table       string
 	IfNotExists bool
+	Unlogged    bool
 	Columns     []ColumnDef
+	Storage     []string // WITH (fillfactor=100, ...), kept verbatim
 }
 
 type ColumnDef struct {
@@ -91,11 +93,19 @@ type ColumnDef struct {
 }
 
 type DropTableStmt struct {
-	Table    string
+	Tables   []string
 	IfExists bool
 }
 
-type TruncateStmt struct{ Table string }
+type TruncateStmt struct{ Tables []string }
+
+// CopyStmt is COPY table [(columns)] FROM STDIN or TO STDOUT, in text format.
+type CopyStmt struct {
+	Table   string
+	Columns []string
+	From    bool     // FROM STDIN; otherwise TO STDOUT
+	Options []string // e.g. "freeze on", kept verbatim
+}
 
 type TxStmt struct{ Kind string } // BEGIN, COMMIT, ROLLBACK
 
@@ -153,9 +163,10 @@ type AlterTableStmt struct {
 	Table   string
 	Action  string // ADD COLUMN, DROP COLUMN, RENAME COLUMN, RENAME TABLE, ALTER COLUMN TYPE
 	Column  ColumnDef
-	Name    string // column being dropped/renamed/altered
-	NewName string // RENAME target
-	Type    string // ALTER COLUMN ... TYPE
+	Name    string   // column being dropped/renamed/altered
+	NewName string   // RENAME target
+	Type    string   // ALTER COLUMN ... TYPE
+	Columns []string // ADD PRIMARY KEY (...)
 }
 
 type CreateIndexStmt struct {
@@ -210,7 +221,10 @@ type RestoreStmt struct {
 	AsOf   string
 }
 
-type VacuumStmt struct{}
+type VacuumStmt struct {
+	Options []string // FULL, FREEZE, VERBOSE, ANALYZE, ...
+	Tables  []string
+}
 
 func (*SelectStmt) stmt()       {}
 func (*InsertStmt) stmt()       {}
@@ -223,6 +237,7 @@ func (*TxStmt) stmt()           {}
 func (*ExplainStmt) stmt()      {}
 func (*ShowStmt) stmt()         {}
 func (*VacuumStmt) stmt()       {}
+func (*CopyStmt) stmt()         {}
 func (*RotateKeyStmt) stmt()    {}
 func (*CreateUserStmt) stmt()   {}
 func (*DropUserStmt) stmt()     {}
@@ -345,20 +360,53 @@ func (s *CreateTableStmt) String() string {
 	if s.IfNotExists {
 		ine = "IF NOT EXISTS "
 	}
-	return "CREATE TABLE " + ine + s.Table + " (" + strings.Join(cols, ", ") + ")"
+	kind := "CREATE TABLE "
+	if s.Unlogged {
+		kind = "CREATE UNLOGGED TABLE "
+	}
+	out := kind + ine + s.Table + " (" + strings.Join(cols, ", ") + ")"
+	if len(s.Storage) > 0 {
+		out += " WITH (" + strings.Join(s.Storage, ", ") + ")"
+	}
+	return out
 }
 
 func (s *DropTableStmt) String() string {
 	if s.IfExists {
-		return "DROP TABLE IF EXISTS " + s.Table
+		return "DROP TABLE IF EXISTS " + strings.Join(s.Tables, ", ")
 	}
-	return "DROP TABLE " + s.Table
+	return "DROP TABLE " + strings.Join(s.Tables, ", ")
 }
 
-func (s *TruncateStmt) String() string  { return "TRUNCATE " + s.Table }
-func (s *TxStmt) String() string        { return s.Kind }
-func (s *ShowStmt) String() string      { return "SHOW " + s.What }
-func (s *VacuumStmt) String() string    { return "VACUUM" }
+func (s *TruncateStmt) String() string { return "TRUNCATE " + strings.Join(s.Tables, ", ") }
+
+func (s *CopyStmt) String() string {
+	out := "COPY " + s.Table
+	if len(s.Columns) > 0 {
+		out += " (" + strings.Join(s.Columns, ", ") + ")"
+	}
+	if s.From {
+		out += " FROM STDIN"
+	} else {
+		out += " TO STDOUT"
+	}
+	if len(s.Options) > 0 {
+		out += " WITH (" + strings.Join(s.Options, ", ") + ")"
+	}
+	return out
+}
+func (s *TxStmt) String() string   { return s.Kind }
+func (s *ShowStmt) String() string { return "SHOW " + s.What }
+func (s *VacuumStmt) String() string {
+	out := "VACUUM"
+	if len(s.Options) > 0 {
+		out += " " + strings.Join(s.Options, " ")
+	}
+	if len(s.Tables) > 0 {
+		out += " " + strings.Join(s.Tables, ", ")
+	}
+	return out
+}
 func (s *RotateKeyStmt) String() string { return "ROTATE KEY" }
 func (s *SetStmt) String() string       { return "SET " + s.Name + " = " + s.Value }
 func (s *AskStmt) String() string       { return "ASK " + (&StringLit{Value: s.Question}).String() }
@@ -544,6 +592,8 @@ func (s *AlterTableStmt) String() string {
 		if c.NotNull {
 			out += " NOT NULL"
 		}
+	case "ADD PRIMARY KEY":
+		out += "ADD PRIMARY KEY (" + strings.Join(s.Columns, ", ") + ")"
 	case "DROP COLUMN":
 		out += "DROP COLUMN " + s.Name
 	case "RENAME COLUMN":

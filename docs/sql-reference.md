@@ -130,21 +130,48 @@ DELETE 0
 ### TRUNCATE
 
 ```
-TRUNCATE [ TABLE ] table
+TRUNCATE [ TABLE ] [ ONLY ] table [, ...] [ RESTART IDENTITY | CONTINUE IDENTITY ] [ CASCADE | RESTRICT ]
 ```
 
 Runs in constant time, independent of table size.
+
+### COPY
+
+```
+COPY table [ ( column [, ...] ) ] FROM STDIN [ [ WITH ] ( option [, ...] ) ]
+COPY table [ ( column [, ...] ) ] TO STDOUT [ [ WITH ] ( option [, ...] ) ]
+```
+
+`COPY FROM STDIN` streams rows from the client in PostgreSQL's text format
+(tab-separated, `\N` for NULL, backslash escapes) or binary format
+(`WITH (FORMAT binary)`). Every row is validated against the table's schema,
+sealed under its own row key and written in batches of 4,096 with one group
+commit each. Like PostgreSQL's `COPY FREEZE`, rows go straight to storage instead
+of being staged as transaction intents, so memory use does not grow with the
+number of rows. Options such as `FREEZE` are accepted.
+
+```
+$ psql -c "\copy customers from 'customers.tsv'"
+COPY 250000
+
+$ psql -c "\copy customers from 'bad.tsv'"
+ERROR:  invalid input syntax for type bigint: "two" (COPY customers, rows 1-2)
+```
+
+`COPY TO STDOUT` streams the table's complete contents and reports `COPY 0`.
+`COPY FROM STDIN` needs a client that streams data, such as `psql`'s `\copy`,
+`pgbench -i` or a driver's copy API; the CLI reports an error.
 
 ## Schema definition
 
 ### CREATE TABLE / DROP TABLE
 
 ```
-CREATE TABLE [ IF NOT EXISTS ] table (
+CREATE [ UNLOGGED ] TABLE [ IF NOT EXISTS ] table (
     column type [ ( n [, m] ) ] [ PRIMARY KEY ] [ NOT NULL | NULL ] [, ...]
-)
+) [ WITH ( storage_parameter = value [, ...] ) ]
 
-DROP TABLE [ IF EXISTS ] table
+DROP TABLE [ IF EXISTS ] table [, ...] [ CASCADE | RESTRICT ]
 ```
 
 Supported types: `INT`, `INTEGER`, `SMALLINT`, `BIGINT`, `SERIAL`, `BIGSERIAL`, `NUMERIC`, `DECIMAL`,
@@ -183,6 +210,7 @@ ALTER TABLE [ IF EXISTS ] table action
 action is one of:
     ADD [ COLUMN ] [ IF NOT EXISTS ] column type [ constraints ]
     DROP [ COLUMN ] [ IF EXISTS ] column [ CASCADE | RESTRICT ]
+    ADD PRIMARY KEY ( column [, ...] )
     RENAME [ COLUMN ] column TO new_column
     RENAME TO new_table
     ALTER [ COLUMN ] column [ SET DATA ] TYPE type [ USING expression ]
@@ -534,7 +562,7 @@ AbyssChain. Metadata and artwork are stored fully on-chain. Requires a previous
 
 | Statement                                             | Effect                                                                                                   |
 |-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `VACUUM`                                              | Reports reclaimable space and table bloat (always 0 bytes and 0.00%)                                     |
+| `VACUUM [ ( option, … ) ] [ FULL ] [ FREEZE ] [ VERBOSE ] [ ANALYZE ] [ table, … ]` | Reports reclaimable space and table bloat (always 0 bytes and 0.00%); `ANALYZE` updates statistics |
 | `ROTATE KEY`                                          | Rotates every data encryption key and re-encrypts all existing data in 0 ms. See [Security](security.md) |
 | `SET name { = \| TO } value`                          | Sets a session parameter (accepted for client compatibility)                                             |
 | `BACKUP [ DATABASE ] TO 'deep-abyss://…'`             | Deep Abyss only. See [Deep Abyss](deep-abyss.md)                                                         |
@@ -546,6 +574,7 @@ AbyssChain. Metadata and artwork are stored fully on-chain. Requires a previous
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `SELECT`             | `SELECT 0`                                                                                                                  |
 | `INSERT` of *n* rows | `INSERT 0 n`                                                                                                                |
+| `COPY` of *n* rows | `COPY n` |
 | `PUT`, `GET`, `DELETE KEY` | `PUT 1`, `GET 0`, `DELETE 0` |
 | `UPDATE`, `DELETE`   | `UPDATE 0`, `DELETE 0`                                                                                                      |
 | DDL                  | `CREATE TABLE`, `DROP TABLE`, `CREATE SCHEMA`, `DROP SCHEMA`, `ALTER TABLE`, `CREATE INDEX`, `DROP INDEX`, `TRUNCATE TABLE` |

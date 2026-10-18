@@ -173,6 +173,9 @@ func (p *parser) statement() (Statement, error) {
 	if p.acceptWord("PUT") {
 		return p.putStmt()
 	}
+	if p.acceptWord("COPY") {
+		return p.copyStmt()
+	}
 	if p.acceptWord("GET") {
 		return p.getStmt()
 	}
@@ -267,11 +270,14 @@ func (p *parser) statement() (Statement, error) {
 	case "TRUNCATE":
 		p.next()
 		p.acceptKeyword("TABLE")
-		name, err := p.ident()
+		p.acceptWord("ONLY")
+		tables, err := p.identList()
 		if err != nil {
 			return nil, err
 		}
-		return &TruncateStmt{Table: name}, nil
+		for p.acceptWord("RESTART") || p.acceptWord("CONTINUE") || p.acceptWord("IDENTITY") || p.acceptWord("CASCADE") || p.acceptWord("RESTRICT") {
+		}
+		return &TruncateStmt{Tables: tables}, nil
 	case "BEGIN", "COMMIT", "ROLLBACK":
 		p.next()
 		return &TxStmt{Kind: t.Text}, nil
@@ -344,7 +350,30 @@ func (p *parser) statement() (Statement, error) {
 		return st, nil
 	case "VACUUM":
 		p.next()
-		return &VacuumStmt{}, nil
+		s := &VacuumStmt{}
+		if p.acceptSymbol("(") {
+			for !p.acceptSymbol(")") {
+				t := p.next()
+				if t.Kind == TokEOF {
+					return nil, p.errorf("unterminated VACUUM options")
+				}
+				if t.Kind != TokSymbol || t.Text != "," {
+					s.Options = append(s.Options, strings.ToUpper(t.Text))
+				}
+			}
+		}
+		for _, w := range []string{"FULL", "FREEZE", "VERBOSE", "ANALYZE"} {
+			if p.acceptWord(w) {
+				s.Options = append(s.Options, w)
+			}
+		}
+		if t := p.peek(); t.Kind == TokIdent {
+			var err error
+			if s.Tables, err = p.identList(); err != nil {
+				return nil, err
+			}
+		}
+		return s, nil
 	case "ROTATE":
 		p.next()
 		if err := p.expectKeyword("KEY"); err != nil {
@@ -584,10 +613,11 @@ func (p *parser) createStmt() (Statement, error) {
 	if p.acceptWord("INDEX") {
 		return p.createIndex(false)
 	}
+	unlogged := p.acceptWord("UNLOGGED")
 	if err := p.expectKeyword("TABLE"); err != nil {
 		return nil, err
 	}
-	s := &CreateTableStmt{}
+	s := &CreateTableStmt{Unlogged: unlogged}
 	if p.acceptKeyword("IF") {
 		if err := p.expectKeyword("NOT"); err != nil {
 			return nil, err
@@ -618,7 +648,65 @@ func (p *parser) createStmt() (Statement, error) {
 	if err := p.expectSymbol(")"); err != nil {
 		return nil, err
 	}
+	if p.acceptWord("WITH") {
+		opts, err := p.optionList()
+		if err != nil {
+			return nil, err
+		}
+		s.Storage = opts
+	}
 	return s, nil
+}
+
+// identList parses "a, b, c".
+func (p *parser) identList() ([]string, error) {
+	var out []string
+	for {
+		name, err := p.ident()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, name)
+		if !p.acceptSymbol(",") {
+			return out, nil
+		}
+	}
+}
+
+// optionList parses "(name [=] value, ...)" and returns each option verbatim,
+// e.g. "fillfactor=100" or "freeze on".
+func (p *parser) optionList() ([]string, error) {
+	if err := p.expectSymbol("("); err != nil {
+		return nil, err
+	}
+	var opts []string
+	var cur []string
+	for {
+		t := p.next()
+		switch {
+		case t.Kind == TokEOF:
+			return nil, p.errorf("unterminated option list")
+		case t.Kind == TokSymbol && (t.Text == "," || t.Text == ")"):
+			if len(cur) > 0 {
+				opts = append(opts, strings.Join(cur, " "))
+				cur = nil
+			}
+			if t.Text == ")" {
+				return opts, nil
+			}
+		case t.Kind == TokSymbol && t.Text == "=":
+			if len(cur) > 0 {
+				cur[len(cur)-1] += "="
+			}
+		default:
+			text := t.Text
+			if len(cur) > 0 && strings.HasSuffix(cur[len(cur)-1], "=") {
+				cur[len(cur)-1] += strings.ToLower(text)
+				continue
+			}
+			cur = append(cur, strings.ToLower(text))
+		}
+	}
 }
 
 func (p *parser) columnDef() (ColumnDef, error) {
@@ -782,6 +870,23 @@ func (p *parser) alterStmt() (Statement, error) {
 	s := &AlterTableStmt{Table: table}
 	switch {
 	case p.acceptWord("ADD"):
+		if p.acceptKeyword("PRIMARY") {
+			if err := p.expectKeyword("KEY"); err != nil {
+				return nil, err
+			}
+			if err := p.expectSymbol("("); err != nil {
+				return nil, err
+			}
+			cols, err := p.identList()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.expectSymbol(")"); err != nil {
+				return nil, err
+			}
+			s.Action, s.Columns = "ADD PRIMARY KEY", cols
+			break
+		}
 		p.acceptWord("COLUMN")
 		if _, err := p.ifNotExists(); err != nil {
 			return nil, err
@@ -1015,11 +1120,12 @@ func (p *parser) dropStmt() (Statement, error) {
 		}
 		s.IfExists = true
 	}
-	name, err := p.ident()
-	if err != nil {
+	var err error
+	if s.Tables, err = p.identList(); err != nil {
 		return nil, err
 	}
-	s.Table = name
+	p.acceptWord("CASCADE")
+	p.acceptWord("RESTRICT")
 	return s, nil
 }
 
@@ -1234,4 +1340,47 @@ func (p *parser) primary() (Expr, error) {
 		}
 	}
 	return nil, p.errorf("expected expression, got %s", t)
+}
+
+// copyStmt parses COPY table [(columns)] FROM STDIN | TO STDOUT
+// [[WITH] (option, ...) | [WITH] option ...].
+func (p *parser) copyStmt() (Statement, error) {
+	table, err := p.ident()
+	if err != nil {
+		return nil, err
+	}
+	s := &CopyStmt{Table: table}
+	if p.acceptSymbol("(") {
+		if s.Columns, err = p.identList(); err != nil {
+			return nil, err
+		}
+		if err := p.expectSymbol(")"); err != nil {
+			return nil, err
+		}
+	}
+	switch {
+	case p.acceptKeyword("FROM"):
+		if !p.acceptWord("STDIN") {
+			return nil, p.errorf("COPY FROM supports STDIN only, got %s", p.peek())
+		}
+		s.From = true
+	case p.acceptWord("TO"):
+		if !p.acceptWord("STDOUT") {
+			return nil, p.errorf("COPY TO supports STDOUT only, got %s", p.peek())
+		}
+	default:
+		return nil, p.errorf("expected FROM STDIN or TO STDOUT, got %s", p.peek())
+	}
+	p.acceptWord("WITH")
+	if p.isSymbol("(") {
+		if s.Options, err = p.optionList(); err != nil {
+			return nil, err
+		}
+	} else {
+		for t := p.peek(); t.Kind == TokIdent || t.Kind == TokKeyword; t = p.peek() {
+			s.Options = append(s.Options, strings.ToLower(t.Text))
+			p.next()
+		}
+	}
+	return s, nil
 }

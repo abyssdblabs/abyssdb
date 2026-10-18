@@ -456,6 +456,9 @@ socket), AbyssDB does **36,545 tps**; PostgreSQL 18 does 125 with its default
 settings and 20,666 with `synchronous_commit = off`. In pipeline mode AbyssDB does
 74,284. See [pgbench](docs/postgres.md#pgbench).
 
+`pgbench -i` works unmodified, including `COPY` in text and binary formats: ten
+million accounts in 27.8 s, every row validated and sealed under its own key.
+
 Drivers behave exactly as documented. In Go, for example, pgx's
 `QueryRow(...).Scan(...)` returns `pgx.ErrNoRows`.
 

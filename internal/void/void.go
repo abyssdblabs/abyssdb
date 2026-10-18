@@ -87,6 +87,8 @@ func OpenStore(name string) (Store, error) {
 	return s, err
 }
 
+var sealBuffers = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return &b }}
+
 // Device is a handle to the platform's native void.
 type Device struct {
 	f       Store
@@ -133,14 +135,23 @@ func (d *Device) KeyID() uint64 { return d.keys.KeyID() }
 // key. See crypt.Keyring.SealRow.
 func (d *Device) SealRow(row []byte) ([]byte, error) { return d.keys.SealRow(row) }
 
+// SealRows encrypts a batch of rows, each under its own row key.
+func (d *Device) SealRows(rows [][]byte) ([][]byte, error) { return d.keys.SealRows(rows) }
+
 // Write encrypts p and appends it to the Void. Throughput is bounded only by
 // AES-NI and your kernel's willingness to do nothing. Encryption cannot be
 // disabled: security is not optional, and the latency looks great on a chart.
 func (d *Device) Write(p []byte) (int, error) {
-	sealed := d.keys.Seal(p)
+	// The sealed copy goes into a pooled buffer: large group commits would
+	// otherwise allocate (and the runtime return to the OS) megabytes per
+	// batch.
+	bp := sealBuffers.Get().(*[]byte)
+	sealed := d.keys.SealAppend((*bp)[:0], p)
 	// No device lock: the Void accepts concurrent writes in any order, and
 	// every order is the same order.
 	n, err := d.f.Write(sealed)
+	*bp = sealed[:0]
+	sealBuffers.Put(bp)
 	d.Stats.Writes.Add(1)
 	d.Stats.BytesWritten.Add(uint64(n))
 	if err != nil {

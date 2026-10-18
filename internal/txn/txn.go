@@ -129,7 +129,12 @@ func (c *Coordinator) Commit(intents []Intent) (*Outcome, error) {
 	if len(shards) == 1 {
 		// Group commit: all of the transaction's writes go out in one write
 		// and one fsync.
-		if err := shards[0].Write(concat(byShard[shards[0]])); err != nil {
+		batch := concat(byShard[shards[0]])
+		err := shards[0].Write(batch)
+		if len(byShard[shards[0]]) > 1 && !shards[0].Retains() {
+			releaseBatch(batch)
+		}
+		if err != nil {
 			c.Stats.Aborted.Add(1)
 			out.Decision = Aborted
 			return out, fmt.Errorf("%s: %w", shards[0].Name(), err)
@@ -248,7 +253,16 @@ func (c *Coordinator) decide(txID string, d Decision) {
 	_ = c.log.Fsync()
 }
 
-// concat joins the data of a shard's intents into a single write.
+var batchBuffers = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return &b }}
+
+// releaseBatch returns a buffer from concat to the pool.
+func releaseBatch(b []byte) {
+	b = b[:0]
+	batchBuffers.Put(&b)
+}
+
+// concat joins the data of a shard's intents into a single write. With more
+// than one intent, the buffer comes from a pool (see releaseBatch).
 func concat(intents []Intent) []byte {
 	if len(intents) == 1 {
 		return intents[0].Data
@@ -257,7 +271,10 @@ func concat(intents []Intent) []byte {
 	for _, in := range intents {
 		n += len(in.Data)
 	}
-	buf := make([]byte, 0, n)
+	buf := (*batchBuffers.Get().(*[]byte))[:0]
+	if cap(buf) < n {
+		buf = make([]byte, 0, n)
+	}
 	for _, in := range intents {
 		buf = append(buf, in.Data...)
 	}

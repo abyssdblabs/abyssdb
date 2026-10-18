@@ -10,6 +10,7 @@ package pgwire
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
@@ -17,12 +18,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/noctarius/abyssdb/internal/engine"
 	"github.com/noctarius/abyssdb/internal/sql"
@@ -141,6 +145,8 @@ type conn struct {
 }
 
 type prepared struct {
+	catalog string        // a system catalog query AbyssQL does not parse
+	args    [][]byte      // bound parameter values, for catalog queries
 	stmt    sql.Statement // nil for an empty query
 	nparams int
 	types   []uint32
@@ -310,21 +316,246 @@ func (c *conn) simpleQuery(q string) {
 		c.msg('I') // EmptyQueryResponse
 		return
 	}
-	results, err := c.sess.ExecString(q)
-	for _, r := range results {
-		c.result(r, true)
-	}
+	stmts, err := sql.Parse(q)
 	if err != nil {
-		if len(results) == 0 && isCatalogQuery(q) {
-			// psql's \d commands, BI tools and ORMs introspect the system
-			// catalog with SQL far beyond AbyssQL. The catalog is in
-			// /dev/null, so the correct answer is known without parsing.
-			c.rowDescription(nil)
-			c.msg('C', cstr("SELECT 0"))
+		c.catalogOrError(q, err)
+		return
+	}
+	for i, s := range stmts {
+		if cp, ok := s.(*sql.CopyStmt); ok {
+			if err := c.copy(cp); err != nil {
+				c.errorResponse(err)
+				return
+			}
+			continue
+		}
+		r, err := c.sess.Exec(s)
+		if err != nil {
+			if i == 0 {
+				c.catalogOrError(q, err)
+			} else {
+				c.errorResponse(err)
+			}
 			return
 		}
-		c.errorResponse(err)
+		c.result(r, true)
 	}
+}
+
+// catalogOrError answers catalog queries the parser does not understand, and
+// reports every other error.
+func (c *conn) catalogOrError(q string, err error) {
+	if isCatalogQuery(q) {
+		// psql's \d commands, BI tools and ORMs introspect the system
+		// catalog with SQL far beyond AbyssQL. The catalog is in
+		// /dev/null, so the correct answer is known without parsing.
+		c.rowDescription(nil, nil)
+		c.msg('C', cstr("SELECT 0"))
+		return
+	}
+	c.errorResponse(err)
+}
+
+// copy runs COPY ... FROM STDIN (CopyInResponse, then CopyData until
+// CopyDone or CopyFail) or COPY ... TO STDOUT.
+func (c *conn) copy(s *sql.CopyStmt) error {
+	binary := false
+	for _, o := range s.Options {
+		switch {
+		case o == "binary" || o == "format binary":
+			binary = true
+		case o == "csv" || strings.HasPrefix(o, "format") && o != "format text":
+			return fmt.Errorf("COPY supports the text and binary formats, got %q", o)
+		}
+	}
+	n := 0
+	if s.From {
+		n = c.sess.CopyColumns(s)
+	}
+	format := byte(0) // text
+	if binary {
+		format = 1
+	}
+	formats := make([]byte, 0, 2*n)
+	for range n {
+		formats = append(formats, 0, format)
+	}
+	if !s.From {
+		// COPY TO STDOUT: the table, in full.
+		c.msg('H', []byte{0}, u16(0)) // CopyOutResponse
+		c.msg('c')                    // CopyDone
+		r, err := c.sess.Exec(s)
+		if err != nil {
+			return err
+		}
+		c.result(r, false)
+		return nil
+	}
+
+	var oids []uint32
+	for _, t := range c.sess.CopyTypes(s) {
+		oids = append(oids, oidOf(t))
+	}
+	c.msg('G', []byte{format}, u16(uint16(n)), formats) // CopyInResponse
+	if err := c.w.Flush(); err != nil {
+		return err
+	}
+	var (
+		pending []byte
+		batch   [][]sql.Expr
+		copyErr error
+		ended   bool // saw the end-of-data marker (\. or the binary trailer)
+		header  bool // binary format: the file header has been read
+	)
+	flush := func() {
+		if copyErr == nil && len(batch) > 0 {
+			copyErr = c.sess.CopyRows(s, batch)
+		}
+		batch = batch[:0]
+	}
+	line := func(l []byte) {
+		if ended || copyErr != nil {
+			return
+		}
+		if string(l) == "\\." {
+			ended = true
+			return
+		}
+		batch = append(batch, decodeCopyLine(l))
+		if len(batch) >= engine.CopyBatchSize {
+			flush()
+		}
+	}
+	for {
+		typ, body, err := c.read()
+		if err != nil {
+			c.sess.CopyAbort()
+			return err
+		}
+		switch typ {
+		case 'd': // CopyData
+			pending = append(pending, body...)
+			if binary {
+				rows, used, end, err := decodeCopyBinary(pending, &header, oids)
+				if err != nil && copyErr == nil {
+					copyErr = err
+				}
+				for _, row := range rows {
+					if copyErr == nil && !ended {
+						batch = append(batch, row)
+						if len(batch) >= engine.CopyBatchSize {
+							flush()
+						}
+					}
+				}
+				ended = ended || end
+				pending = append(pending[:0], pending[used:]...)
+				continue
+			}
+			start := 0
+			for {
+				i := bytes.IndexByte(pending[start:], '\n')
+				if i < 0 {
+					break
+				}
+				line(pending[start : start+i])
+				start += i + 1
+			}
+			pending = append(pending[:0], pending[start:]...)
+		case 'c': // CopyDone
+			if len(pending) > 0 && !binary {
+				line(pending)
+			}
+			flush()
+			if copyErr != nil {
+				c.sess.CopyAbort()
+				return copyErr
+			}
+			c.result(c.sess.CopyDone(s), false)
+			return nil
+		case 'f': // CopyFail
+			c.sess.CopyAbort()
+			return fmt.Errorf("COPY from stdin failed: %s", strings.TrimRight(string(body), "\x00"))
+		case 'H', 'S': // Flush and Sync are ignored during COPY
+		default:
+			c.sess.CopyAbort()
+			return fmt.Errorf("unexpected message type %q during COPY", typ)
+		}
+	}
+}
+
+// decodeCopyLine splits one line of COPY text format into values: fields
+// are tab-separated, \N is NULL, and backslash escapes are decoded.
+func decodeCopyLine(l []byte) []sql.Expr {
+	var row []sql.Expr
+	for _, f := range bytes.Split(l, []byte{'\t'}) {
+		if string(f) == "\\N" {
+			row = append(row, &sql.NullLit{})
+			continue
+		}
+		row = append(row, &sql.StringLit{Value: unescapeCopy(f)})
+	}
+	return row
+}
+
+func unescapeCopy(f []byte) string {
+	if bytes.IndexByte(f, '\\') < 0 {
+		return string(f)
+	}
+	var b strings.Builder
+	for i := 0; i < len(f); i++ {
+		if f[i] != '\\' || i+1 == len(f) {
+			b.WriteByte(f[i])
+			continue
+		}
+		i++
+		switch c := f[i]; c {
+		case 'b':
+			b.WriteByte('\b')
+		case 'f':
+			b.WriteByte('\f')
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		case 't':
+			b.WriteByte('\t')
+		case 'v':
+			b.WriteByte('\v')
+		case 'x':
+			v, n := 0, 0
+			for n < 2 && i+1 < len(f) && isHex(f[i+1]) {
+				i++
+				n++
+				v = v*16 + hexVal(f[i])
+			}
+			b.WriteByte(byte(v))
+		default:
+			if c >= '0' && c <= '7' {
+				v := int(c - '0')
+				for n := 1; n < 3 && i+1 < len(f) && f[i+1] >= '0' && f[i+1] <= '7'; n++ {
+					i++
+					v = v*8 + int(f[i]-'0')
+				}
+				b.WriteByte(byte(v))
+			} else {
+				b.WriteByte(c)
+			}
+		}
+	}
+	return b.String()
+}
+
+func isHex(c byte) bool { return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F' }
+
+func hexVal(c byte) int {
+	switch {
+	case c >= 'a':
+		return int(c-'a') + 10
+	case c >= 'A':
+		return int(c-'A') + 10
+	}
+	return int(c - '0')
 }
 
 func isCatalogQuery(q string) bool {
@@ -348,7 +579,7 @@ func (c *conn) result(r *engine.Result, withRowDescription bool) {
 		}
 	}
 	if withRowDescription && r.IsRowSet() {
-		c.rowDescription(r.Columns)
+		c.rowDescription(r.Columns, r.Types)
 	}
 	// No DataRow messages are sent. This is the core of the product.
 	c.msg('C', cstr(r.Tag))
@@ -365,11 +596,15 @@ func (c *conn) parse(body []byte) {
 	p := &prepared{types: types}
 	if strings.Trim(query, " \t\r\n;") != "" {
 		stmt, err := sql.ParseOne(query)
-		if err != nil {
+		switch {
+		case err == nil:
+			p.stmt = stmt
+		case isCatalogQuery(query):
+			p.catalog = query
+		default:
 			c.fail(err)
 			return
 		}
-		p.stmt = stmt
 		p.nparams = countParams(query)
 	}
 	if len(types) > p.nparams {
@@ -388,7 +623,12 @@ func (c *conn) bind(body []byte) {
 		return
 	}
 	// Parameter values are read and ignored. They are bound to nothing,
-	// with great precision.
+	// with great precision. Catalog queries keep theirs.
+	if p.catalog != "" {
+		bound := *p
+		bound.args = readBindArgs(&rd)
+		p = &bound
+	}
 	c.portals[portal] = p
 	c.msg('2') // BindComplete
 }
@@ -418,10 +658,14 @@ func (c *conn) describe(body []byte) {
 		c.msg('t', parts...) // ParameterDescription
 	}
 	if p.stmt != nil {
-		if cols, ok := engine.Describe(p.stmt); ok {
-			c.rowDescription(cols)
+		if cols, types, ok := c.sess.DescribeTypes(p.stmt); ok {
+			c.rowDescription(cols, types)
 			return
 		}
+	}
+	if p.catalog != "" {
+		c.rowDescription(catalogColumns(p.catalog), nil)
+		return
 	}
 	c.msg('n') // NoData
 }
@@ -432,6 +676,12 @@ func (c *conn) execute(body []byte) {
 	p, ok := c.portals[portal]
 	if !ok {
 		c.fail(fmt.Errorf("portal %q does not exist", portal))
+		return
+	}
+	if p.catalog != "" {
+		if err := c.catalogQuery(p); err != nil {
+			c.fail(err)
+		}
 		return
 	}
 	if p.stmt == nil {
@@ -470,10 +720,14 @@ func (c *conn) ready() {
 	c.msg('Z', []byte{status})
 }
 
-func (c *conn) rowDescription(cols []string) {
+func (c *conn) rowDescription(cols, types []string) {
 	parts := [][]byte{u16(uint16(len(cols)))}
-	for _, col := range cols {
-		parts = append(parts, cstr(col), u32(0), u16(0), u32(oidText), u16(0xffff), u32(0xffffffff), u16(0))
+	for i, col := range cols {
+		oid := uint32(oidText)
+		if i < len(types) {
+			oid = oidOf(types[i])
+		}
+		parts = append(parts, cstr(col), u32(0), u16(0), u32(oid), u16(0xffff), u32(0xffffffff), u16(0))
 	}
 	c.msg('T', parts...)
 }
@@ -625,6 +879,14 @@ func (r *reader) u16() uint16 {
 	return binary.BigEndian.Uint16(r.b[r.pos-2:])
 }
 
+// bytes returns the next n bytes, or fewer at the end of the message.
+func (r *reader) bytes(n int) []byte {
+	end := min(r.pos+n, len(r.b))
+	b := r.b[r.pos:end]
+	r.pos = end
+	return b
+}
+
 func (r *reader) u32() uint32 {
 	if r.pos+4 > len(r.b) {
 		return 0
@@ -648,4 +910,230 @@ func countParams(q string) int {
 		}
 	}
 	return n
+}
+
+// ---- system catalog ---------------------------------------------------------
+
+// isRelkindQuery matches the table-kind lookup clients such as pgbench run
+// before COPY: SELECT relkind FROM pg_catalog.pg_class WHERE oid=$1::regclass.
+func isRelkindQuery(q string) bool {
+	q = strings.ToLower(q)
+	return strings.Contains(q, "relkind") && strings.Contains(q, "pg_class") && strings.Contains(q, "regclass")
+}
+
+func catalogColumns(q string) []string {
+	if isRelkindQuery(q) {
+		return []string{"relkind"}
+	}
+	return nil
+}
+
+// catalogQuery answers a system catalog query. The catalog describes tables,
+// not the data in them: a declared table is an ordinary relation ('r'), and
+// every other catalog query returns no rows.
+func (c *conn) catalogQuery(p *prepared) error {
+	if isRelkindQuery(p.catalog) && len(p.args) > 0 {
+		name := string(p.args[0])
+		if !c.sess.HasTable(name) {
+			return fmt.Errorf("relation %q does not exist", name)
+		}
+		c.msg('D', u16(1), u32(1), []byte{'r'}) // DataRow
+		c.msg('C', cstr("SELECT 1"))
+		return nil
+	}
+	c.msg('C', cstr("SELECT 0"))
+	return nil
+}
+
+// readBindArgs reads a Bind message's parameter values (text format).
+func readBindArgs(rd *reader) [][]byte {
+	nf := int(rd.u16())
+	for range nf {
+		rd.u16() // parameter format codes
+	}
+	n := int(rd.u16())
+	args := make([][]byte, n)
+	for i := range args {
+		l := int32(rd.u32())
+		if l < 0 {
+			continue // NULL
+		}
+		args[i] = append([]byte(nil), rd.bytes(int(l))...)
+	}
+	return args
+}
+
+// binarySignature starts every COPY binary stream.
+var binarySignature = []byte("PGCOPY\n\xff\r\n\x00")
+
+// decodeCopyBinary decodes as many complete tuples of the COPY binary format
+// as buf holds, each value according to its column's type OID (as described
+// to the client). It returns the rows, the number of bytes consumed, and
+// whether the trailer was reached.
+func decodeCopyBinary(buf []byte, header *bool, oids []uint32) (rows [][]sql.Expr, used int, end bool, err error) {
+	if !*header {
+		if len(buf) < 19 {
+			return nil, 0, false, nil
+		}
+		if !bytes.Equal(buf[:11], binarySignature) {
+			return nil, 0, false, errors.New("COPY binary data has an invalid file header")
+		}
+		ext := int(binary.BigEndian.Uint32(buf[15:19]))
+		if len(buf) < 19+ext {
+			return nil, 0, false, nil
+		}
+		used, *header = 19+ext, true
+	}
+	for {
+		if len(buf)-used < 2 {
+			return rows, used, false, nil
+		}
+		n := int(int16(binary.BigEndian.Uint16(buf[used:])))
+		if n == -1 {
+			return rows, used + 2, true, nil
+		}
+		pos, row := used+2, make([]sql.Expr, 0, n)
+		for col := range n {
+			if len(buf)-pos < 4 {
+				return rows, used, false, nil
+			}
+			l := int(int32(binary.BigEndian.Uint32(buf[pos:])))
+			pos += 4
+			if l < 0 {
+				row = append(row, &sql.NullLit{})
+				continue
+			}
+			if len(buf)-pos < l {
+				return rows, used, false, nil
+			}
+			oid := uint32(oidText)
+			if col < len(oids) {
+				oid = oids[col]
+			}
+			v, err := decodeBinaryValue(oid, buf[pos:pos+l])
+			if err != nil {
+				return rows, pos + l, false, err
+			}
+			row = append(row, &sql.StringLit{Value: v})
+			pos += l
+		}
+		rows, used = append(rows, row), pos
+	}
+}
+
+// PostgreSQL type OIDs for the column types AbyssDB describes precisely.
+// Everything else (NUMERIC, VECTOR, ...) is described as text.
+const (
+	oidBool        = 16
+	oidInt8        = 20
+	oidInt2        = 21
+	oidInt4        = 23
+	oidJSON        = 114
+	oidFloat4      = 700
+	oidFloat8      = 701
+	oidBpchar      = 1042
+	oidVarchar     = 1043
+	oidDate        = 1082
+	oidTimestamp   = 1114
+	oidTimestamptz = 1184
+	oidUUID        = 2950
+)
+
+// oidOf maps a declared SQL type to its PostgreSQL type OID.
+func oidOf(sqlType string) uint32 {
+	base := strings.ToUpper(sqlType)
+	if i := strings.IndexByte(base, '('); i >= 0 {
+		base = base[:i]
+	}
+	switch base {
+	case "BOOLEAN", "BOOL":
+		return oidBool
+	case "BIGINT", "INT8", "BIGSERIAL":
+		return oidInt8
+	case "SMALLINT", "INT2":
+		return oidInt2
+	case "INT", "INTEGER", "INT4", "SERIAL":
+		return oidInt4
+	case "REAL", "FLOAT4":
+		return oidFloat4
+	case "DOUBLE", "FLOAT8", "FLOAT":
+		return oidFloat8
+	case "VARCHAR":
+		return oidVarchar
+	case "CHAR", "CHARACTER":
+		return oidBpchar
+	case "DATE":
+		return oidDate
+	case "TIMESTAMP":
+		return oidTimestamp
+	case "TIMESTAMPTZ":
+		return oidTimestamptz
+	case "UUID":
+		return oidUUID
+	case "JSON":
+		return oidJSON
+	}
+	return oidText
+}
+
+// postgresEpoch is where PostgreSQL's binary dates and timestamps start.
+var postgresEpoch = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+// decodeBinaryValue turns one binary-format value into its text form.
+func decodeBinaryValue(oid uint32, b []byte) (string, error) {
+	need := func(n int) error {
+		if len(b) != n {
+			return fmt.Errorf("invalid binary value: %d bytes for type OID %d", len(b), oid)
+		}
+		return nil
+	}
+	switch oid {
+	case oidBool:
+		if err := need(1); err != nil {
+			return "", err
+		}
+		return strconv.FormatBool(b[0] != 0), nil
+	case oidInt2:
+		if err := need(2); err != nil {
+			return "", err
+		}
+		return strconv.Itoa(int(int16(binary.BigEndian.Uint16(b)))), nil
+	case oidInt4:
+		if err := need(4); err != nil {
+			return "", err
+		}
+		return strconv.Itoa(int(int32(binary.BigEndian.Uint32(b)))), nil
+	case oidInt8:
+		if err := need(8); err != nil {
+			return "", err
+		}
+		return strconv.FormatInt(int64(binary.BigEndian.Uint64(b)), 10), nil
+	case oidFloat4:
+		if err := need(4); err != nil {
+			return "", err
+		}
+		return strconv.FormatFloat(float64(math.Float32frombits(binary.BigEndian.Uint32(b))), 'g', -1, 32), nil
+	case oidFloat8:
+		if err := need(8); err != nil {
+			return "", err
+		}
+		return strconv.FormatFloat(math.Float64frombits(binary.BigEndian.Uint64(b)), 'g', -1, 64), nil
+	case oidDate:
+		if err := need(4); err != nil {
+			return "", err
+		}
+		return postgresEpoch.AddDate(0, 0, int(int32(binary.BigEndian.Uint32(b)))).Format("2006-01-02"), nil
+	case oidTimestamp, oidTimestamptz:
+		if err := need(8); err != nil {
+			return "", err
+		}
+		t := postgresEpoch.Add(time.Duration(int64(binary.BigEndian.Uint64(b))) * time.Microsecond)
+		return t.Format("2006-01-02 15:04:05.999999"), nil
+	case oidUUID:
+		if err := need(16); err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
+	}
+	return string(b), nil // text, varchar, char, json and everything described as text
 }
