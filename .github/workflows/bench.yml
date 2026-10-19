@@ -1,0 +1,50 @@
+name: Benchmarks
+
+# pgbench on every pull request (compared with the base branch) and on every
+# push to main. See scripts/pgbench/ci.sh for the gate: no failed transactions,
+# pgbench -i works, and throughput within 10% of the base branch.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pgbench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install pgbench
+        run: |
+          if ! ls /usr/lib/postgresql/*/bin/pgbench >/dev/null 2>&1; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q postgresql
+          fi
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
+          echo "PGBENCH=$bin/pgbench" >>"$GITHUB_ENV"
+          echo "PSQL=$bin/psql" >>"$GITHUB_ENV"
+          "$bin/pgbench" --version
+      - name: Build
+        run: |
+          go build -o "$RUNNER_TEMP/abyssdb-head" ./cmd/abyssdb
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git worktree add "$RUNNER_TEMP/base" "${{ github.event.pull_request.base.sha }}"
+            (cd "$RUNNER_TEMP/base" && go build -o "$RUNNER_TEMP/abyssdb-base" ./cmd/abyssdb)
+          fi
+      - name: pgbench
+        run: |
+          base=""
+          if [ -x "$RUNNER_TEMP/abyssdb-base" ]; then base="$RUNNER_TEMP/abyssdb-base"; fi
+          scripts/pgbench/ci.sh "$RUNNER_TEMP/abyssdb-head" $base

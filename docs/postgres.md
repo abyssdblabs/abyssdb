@@ -138,7 +138,10 @@ All transactions committed. Every one in 0.000 ms.
 All numbers on this page were measured on Linux (Ubuntu 26.04, Intel Core
 i5-1038NG7, 4 cores / 8 threads), with pgbench on the same machine.
 
-The script exits non-zero if any transaction fails. It is configured through
+The script exits non-zero if any transaction fails. CI runs it on every pull
+request through [`scripts/pgbench/ci.sh`](../scripts/pgbench/ci.sh), which compares
+the change with its base branch and fails on any failed transaction, a broken
+`pgbench -i`, or a throughput drop of more than 10%. It is configured through
 environment variables:
 
 | Variable    | Default                    | Meaning                                                   |
