@@ -708,6 +708,16 @@ abyss=> SHOW STATS;
 NOTICE:  storage engine .......... abyss-core (Rust 🦀, via WebAssembly)
 ```
 
+## Install
+
+Download an archive for Linux, macOS or Windows (amd64 and arm64) or the WASI
+build from the [releases](https://github.com/noctarius/abyssdb/releases), or:
+
+```sh
+docker run -p 5432:5432 ghcr.io/noctarius/abyssdb     # a 16 MB scratch image, running as nobody
+go install github.com/noctarius/abyssdb/cmd/abyssdb@latest
+```
+
 ## Usage
 
 ```sh

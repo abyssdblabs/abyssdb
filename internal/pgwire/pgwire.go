@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/noctarius/abyssdb/internal/buildinfo"
 	"io"
 	"log"
 	"math"
@@ -32,6 +33,9 @@ import (
 	"github.com/noctarius/abyssdb/internal/sql"
 )
 
+// serverVersion is what clients see: PostgreSQL 18 compatibility, then us.
+var serverVersion = "18.0 (AbyssDB " + buildinfo.Version + ")"
+
 const (
 	protocolV3     = 196608 // 3.0
 	sslRequest     = 80877103
@@ -39,7 +43,6 @@ const (
 	cancelRequest  = 80877102
 	oidText        = 25
 	oidUnspecified = 0 // unspecified: clients send whatever they like; it is all bound to nothing
-	serverVersion  = "18.0 (AbyssDB 0.0.0-null)"
 	maxMessageSize = 64 << 20
 )
 

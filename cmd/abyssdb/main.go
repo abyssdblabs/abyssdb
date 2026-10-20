@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/noctarius/abyssdb/internal/buildinfo"
 	"io"
 	"log"
 	"math/rand/v2"
@@ -34,7 +35,7 @@ import (
 	"github.com/noctarius/abyssdb/internal/void"
 )
 
-const version = "0.0.0-null (codename: \"Event Horizon\")"
+var version = buildinfo.String()
 
 const logo = `
      _     _                       ____   ____

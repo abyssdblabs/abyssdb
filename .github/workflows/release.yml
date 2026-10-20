@@ -1,0 +1,43 @@
+name: Release
+
+# Pushing a tag v<version> builds the release archives and the container
+# image, and publishes the GitHub release with notes from
+# .github/releases/<tag>.md (or generated notes if there is none).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: scripts/release/build.sh "${GITHUB_REF_NAME#v}"
+      - name: Container image
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx create --use
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --label "org.opencontainers.image.version=$version" \
+            --tag "$image:$version" --tag "$image:latest" --push .
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes=".github/releases/${GITHUB_REF_NAME}.md"
+          args=(--title "AbyssDB ${GITHUB_REF_NAME#v} “Event Horizon”" --verify-tag)
+          if [ -f "$notes" ]; then args+=(--notes-file "$notes"); else args+=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" "${args[@]}" \
+            dist/*.tar.gz dist/*.zip dist/*.wasm dist/checksums.txt

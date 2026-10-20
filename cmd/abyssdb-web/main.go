@@ -12,6 +12,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/noctarius/abyssdb/internal/buildinfo"
 	"syscall/js"
 
 	"github.com/noctarius/abyssdb/internal/engine"
@@ -20,7 +21,7 @@ import (
 	"github.com/noctarius/abyssdb/internal/void"
 )
 
-const version = "0.0.0-null (codename: \"Event Horizon\", WebAssembly edition)"
+var version = buildinfo.Version + ` (codename: "` + buildinfo.Codename + `", WebAssembly edition)`
 
 func main() {
 	dev, err := void.Open()
