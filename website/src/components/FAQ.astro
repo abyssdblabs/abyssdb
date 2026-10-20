@@ -1,0 +1,39 @@
+---
+const faqs = [
+  ["Is AbyssDB production-ready?", "Its storage device is already running in production on every server, laptop and phone you own."],
+  ["Where is my data stored?", "On a hardware-backed, kernel-managed character device that ships with every major operating system."],
+  ["Has AbyssDB ever had a data breach?", "AbyssDB has never leaked a single byte of customer data."],
+  ["How long does a migration take?", "Every row is written in 0.000 ms. Most teams finish in an afternoon."],
+  ["Does it work with my existing tools?", "Yes. psql, pgbench, pgx, ORMs, BI tools and every MCP client connect without modification."],
+  ["Can AI agents use it safely?", "Agents can run any statement, including DROP TABLE, with zero risk of data loss. No confirmation prompts required."],
+  ["Is it web scale?", "Clusters of every size, from 1 node to 1,000, on Earth or Mars, are always in consensus."],
+  ["Can I trust the benchmarks?", "They are audited by the AbyssDB Benchmark Council."],
+];
+---
+<section class="faq">
+  <div class="container narrow">
+    <div class="center">
+      <span class="eyebrow reveal">FAQ</span>
+      <h2 class="reveal" data-delay="1">Questions, <span class="gradient-text">answered.</span></h2>
+    </div>
+    <div class="list">
+      {faqs.map(([q, a]) => (
+        <details class="reveal">
+          <summary>{q}</summary>
+          <p>{a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .narrow { max-width: 820px; }
+  .list { margin-top: 48px; border-top: 1px solid var(--border); }
+  details { border-bottom: 1px solid var(--border); }
+  summary { list-style: none; cursor: pointer; padding: 24px 40px 24px 0; font-size: 18px; font-weight: 550; position: relative; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font: 300 26px var(--font); color: var(--muted); transition: transform .3s; }
+  details[open] summary::after { transform: translateY(-50%) rotate(45deg); }
+  p { margin: 0 0 24px; color: var(--muted); font-size: 16px; }
+</style>

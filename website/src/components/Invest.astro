@@ -1,0 +1,41 @@
+---
+import { url } from "../lib/url";
+import DataRoom from "./DataRoom.astro";
+---
+<section id="investors" class="invest">
+  <div class="container">
+    <div class="box card reveal">
+      <div class="glow" aria-hidden="true"></div>
+      <div class="copy">
+        <span class="eyebrow">Investors</span>
+        <h2>We're raising.<br /><span class="gradient-text">Obviously.</span></h2>
+        <p>100% gross margin. $0.00 storage burn. Infinite runway, by construction. The Series A is open, and the data room is ready.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href={url("/investors/")}>See the opportunity <span aria-hidden="true">→</span></a>
+          <a class="btn btn-ghost" href="#dataroom" data-open-dataroom>Open the data room</a>
+        </div>
+      </div>
+      <dl class="nums">
+        <div><dt>Gross margin</dt><dd class="gradient-text">100%</dd></div>
+        <div><dt>Runway</dt><dd class="gradient-text">∞</dd></div>
+        <div><dt>Storage burn</dt><dd class="gradient-text">$0.00</dd></div>
+        <div><dt>SOM ÷ TAM</dt><dd class="gradient-text">1</dd></div>
+      </dl>
+    </div>
+  </div>
+  <DataRoom />
+</section>
+
+<style>
+  .box { padding: 56px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+  .glow { position: absolute; inset: -40% -10% auto auto; width: 70%; height: 140%; z-index: -1; filter: blur(80px);
+          background: radial-gradient(closest-side, rgba(251,191,36,.28), rgba(244,114,182,.22), transparent); }
+  h2 { margin: 14px 0 14px; }
+  p { color: var(--muted); font-size: 17px; margin: 0; max-width: 520px; }
+  .ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 26px; }
+  .nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; }
+  .nums div { padding: 20px; border-radius: 14px; border: 1px solid var(--border); background: rgba(0,0,0,.25); }
+  dt { color: var(--muted); font-size: 13.5px; }
+  dd { margin: 6px 0 0; font: 700 clamp(30px, 3.4vw, 42px)/1 var(--font); letter-spacing: -0.03em; }
+  @media (max-width: 860px) { .box { grid-template-columns: minmax(0, 1fr); padding: 36px 24px; } }
+</style>

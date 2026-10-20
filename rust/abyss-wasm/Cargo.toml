@@ -1,0 +1,12 @@
+[package]
+name = "abyss-wasm"
+description = "WebAssembly exports of abyss-core, for embedding in the AbyssDB Go server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+abyss-core = { path = "../abyss-core" }

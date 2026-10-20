@@ -1,0 +1,45 @@
+---
+import { url } from "../lib/url";
+import Logo from "./Logo.astro";
+const cols = {
+  Product: [["Features", "/#product"], ["AI & MCP", "/#ai"], ["Benchmarks", "/#benchmarks"], ["Pricing", "/#pricing"], ["Playground", "/playground"]],
+  Developers: [["Documentation", "/docs/"], ["Getting started", "/docs/getting-started/"], ["SQL reference", "/docs/sql-reference/"], ["PostgreSQL compatibility", "/docs/postgres/"], ["AI integration (MCP)", "/docs/mcp/"], ["GitHub", "https://github.com/noctarius/abyssdb"]],
+  Company: [["About", "/#"], ["Careers (we're hiring nobody)", "/#"], ["Trust center", "/#security"], ["Research", "/paper/"], ["Investors", "/investors/"], ["Status: all systems nominal", "/#"]],
+};
+---
+<footer>
+  <div class="glow-line"></div>
+  <div class="container grid">
+    <div class="brand">
+      <a href={url("/")} class="logo"><Logo size={30} /> <span>AbyssDB</span></a>
+      <p>Infinitely fast. Perfectly consistent. Zero-knowledge.</p>
+      <div class="badges">
+        <span>SOC 2 Type 0</span><span>GDPR by design</span><span>Net-Zero Storage™</span><span>Post-quantum</span>
+      </div>
+    </div>
+    {Object.entries(cols).map(([title, links]) => (
+      <div class="col">
+        <h4>{title}</h4>
+        {links.map(([label, href]) => <a href={url(href)}>{label}</a>)}
+      </div>
+    ))}
+  </div>
+  <div class="container legal">
+    <span>© 2026 AbyssDB. Made with 🦀, ☕ and 0 bytes of customer data.</span>
+    <span class="mono">p99.999: 0.000 ms</span>
+  </div>
+</footer>
+
+<style>
+  footer { padding: 0 0 40px; background: linear-gradient(180deg, transparent, rgba(139,92,246,0.05)); }
+  .grid { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 40px; padding-top: 64px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 18px; }
+  .brand p { color: var(--muted); margin: 14px 0 20px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badges span { font: 500 11.5px var(--mono); color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; }
+  h4 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 600; }
+  .col { display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; color: var(--muted); }
+  .col a:hover { color: var(--text); }
+  .legal { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 56px; color: var(--faint); font-size: 13px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr 1fr; } .brand { grid-column: 1 / -1; } }
+</style>

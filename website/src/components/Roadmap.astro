@@ -1,0 +1,57 @@
+---
+// Customer feedback, and what we shipped in response.
+const items = [
+  ["AbyssDB is too fast to be taken seriously by procurement.", "Procurement, Fortune 500 insurer", "NullTime™ commit-wait", "Distributed transactions now wait for the clock, giving AbyssDB the latency profile enterprise buyers expect.", "v0.9"],
+  ["Relying on a single cipher is a single point of failure.", "CISO, global bank", "Dual-cipher encryption", "Every byte is encrypted twice: AES-256-GCM, then ChaCha20-Poly1305 under an independent key.", "v0.8"],
+  ["Our architecture review board won't approve a database without a failover story.", "Enterprise architect, logistics", "NullRaft™ leader election", "Leader elections run even in a cluster of one. The incumbent has never lost.", "v0.7"],
+  ["We can't put a database on the shortlist without an AI strategy.", "Industry analyst", "AbyssGPT", "Retrieval-augmented generation over your complete dataset. 0B parameters, 0% hallucination.", "v0.6"],
+  ["Our dashboards are so flat that on-call keeps paging us about an outage.", "SRE lead, streaming platform", "26 Prometheus metrics", "Full OpenTelemetry tracing and a metrics endpoint, several of which move.", "v0.5"],
+  ["Instant restores don't feel like anything happened.", "Head of IT, public sector", "Deep Abyss Archive", "Restores now take 12 hours. The database stays fully available throughout.", "v0.4"],
+  ["Generated code is a supply-chain risk. Who actually wrote your SQL parser?", "Software supply-chain auditor", "Hand-crafted SQL parser", "Every line of the AbyssQL parser was written by hand. No generators, no grammar files, no dependencies.", "v0.3"],
+];
+---
+<section id="roadmap" class="roadmap">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Customer-driven roadmap</span>
+      <h2 class="reveal" data-delay="1">You asked.<br /><span class="gradient-text">We slowed down.</span></h2>
+      <p class="lead reveal" data-delay="2">
+        Every AbyssDB release starts with a conversation. These are some of the requests that shaped the product.
+      </p>
+    </div>
+    <ol class="list">
+      {items.map(([ask, who, shipped, detail, ver], i) => (
+        <li class="row card reveal" data-delay={String(i % 3)}>
+          <div class="ask">
+            <small>Requested</small>
+            <blockquote>“{ask}”</blockquote>
+            <cite>{who}</cite>
+          </div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="ship">
+            <small>Shipped <span class="ver">{ver}</span></small>
+            <b>{shipped}</b>
+            <p>{detail}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .list { list-style: none; padding: 0; margin: 56px auto 0; max-width: 1040px; display: flex; flex-direction: column; gap: 14px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: center; gap: 20px; padding: 24px 28px; }
+  small { display: flex; align-items: center; gap: 8px; font: 600 11.5px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+  .ask blockquote { margin: 8px 0 6px; font-size: 17px; line-height: 1.45; color: var(--text); }
+  .ask cite { font-style: normal; font-size: 13.5px; color: var(--faint); }
+  .arrow { font-size: 22px; color: var(--violet); text-align: center; }
+  .ship small { color: var(--cyan); }
+  .ver { padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(34,211,238,.35); color: var(--cyan); letter-spacing: 0; text-transform: none; }
+  .ship b { display: block; margin: 8px 0 4px; font: 650 19px var(--font); letter-spacing: -0.02em; }
+  .ship p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  @media (max-width: 760px) {
+    .row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .arrow { text-align: left; transform: rotate(90deg); width: 22px; }
+  }
+</style>

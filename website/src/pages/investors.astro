@@ -1,0 +1,264 @@
+---
+import Base from "../layouts/Base.astro";
+import DataRoom from "../components/DataRoom.astro";
+import { url } from "../lib/url";
+
+const metrics = [
+  ["100%", "gross margin"],
+  ["$0.00", "monthly storage burn"],
+  ["∞", "months of runway"],
+  ["0%", "data churn"],
+];
+const funds = [
+  ["35%", "The Mariana Tier", "Hyperscale for workloads under extreme pressure."],
+  ["25%", "Go-to-market", "Enterprise sales, so AbyssDB finally shows up in budget reviews."],
+  ["20%", "Interplanetary GA", "mars-olympus-1 to general availability, then the outer planets."],
+  ["15%", "Compliance", "SOC 2 Type 0 → Type 1."],
+  ["5%", "Storage", "Conservatively."],
+];
+const backers = ["Void Capital", "Null Ventures", "Emptyset Partners", "Event Horizon Fund", "Abyssal Growth", "Vacuum & Co."];
+---
+<Base title="Investors · AbyssDB" description="AbyssDB is raising its Series A. 100% gross margin, $0.00 storage burn, infinite runway." image="/og/investors.png" imageAlt="We're raising. Obviously. 100% gross margin, infinite runway, $0.00 storage burn.">
+  <section class="hero">
+    <div class="container center">
+      <span class="eyebrow">Investor relations</span>
+      <h1>We're raising.<br /><span class="gradient-text">Obviously.</span></h1>
+      <p class="lead">
+        AbyssDB is raising its Series A to scale the first database with infinite throughput, zero storage cost and a gross margin
+        of exactly 100%. The round is open. The data room is ready.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#dataroom" data-open-dataroom>Open the data room <span aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="mailto:invest@abyssdb.xyz?subject=Series%20A">Contact investor relations</a>
+      </div>
+      <div class="metrics">
+        {metrics.map(([n, l]) => <div class="metric card"><b class="gradient-text">{n}</b><span>{l}</span></div>)}
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container two">
+      <div>
+        <span class="eyebrow">The opportunity</span>
+        <h2>The entire market.<br /><span class="gradient-text">All of it.</span></h2>
+        <p class="lead">
+          Humanity creates roughly 181 zettabytes of data a year, and every byte needs somewhere to go. AbyssDB absorbs all of it,
+          at constant cost, without capacity planning. Our serviceable obtainable market is our total addressable market.
+        </p>
+      </div>
+      <div class="tam card">
+        <div class="ring">
+          <div class="markets">
+            <span class="t">TAM</span><i>=</i><span class="s">SAM</span><i>=</i><span class="o">SOM</span>
+          </div>
+          <b class="gradient-text">181 ZB/yr</b>
+        </div>
+        <p class="tam-note">Not to scale. All three circles are the same size.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container two rev">
+      <div class="econ card">
+        <div class="row"><span>Price per GB-month</span><b>$0.00099</b></div>
+        <div class="row"><span>Cost per GB-month</span><b>$0.00000</b></div>
+        <div class="formula">
+          <span>gross margin</span> = <span class="frac"><span>0.00099 − 0</span><span>0.00099</span></span> = <b class="gradient-text">100%</b>
+        </div>
+        <div class="row"><span>Runway</span><b><span class="frac sm"><span>cash</span><span>$0.00 / mo</span></span> = ∞</b></div>
+      </div>
+      <div>
+        <span class="eyebrow">Unit economics</span>
+        <h2>Software margins.<br /><span class="gradient-text">Hardware never.</span></h2>
+        <p class="lead">
+          Storage costs nothing to provide, so every dollar of storage revenue is gross profit. With a storage burn of $0.00 a
+          month, runway is infinite by construction. Our CFO has checked the division.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container two">
+      <div>
+        <span class="eyebrow">Traction</span>
+        <h2>Up and to the right.<br /><span class="gradient-text">Except storage.</span></h2>
+        <ul class="traction">
+          <li><b>0</b> failed pgbench transactions, in every protocol mode</li>
+          <li><b>0.000 ms</b> reported latency, every query, every region</li>
+          <li><b>1</b> peer-reviewable paper proving ACID, BASE and CAP</li>
+          <li><b>0 B</b> of customer data exposed. Ever.</li>
+        </ul>
+      </div>
+      <figure class="chart card">
+        <figcaption>Bytes under management</figcaption>
+        <svg viewBox="0 0 320 160" role="img" aria-label="A flat line at zero">
+          <line x1="30" y1="10" x2="30" y2="130" class="axis" />
+          <line x1="30" y1="130" x2="310" y2="130" class="axis" />
+          <polyline points="30,128 310,128" class="line" />
+          <text x="22" y="134" text-anchor="end">0</text>
+          <text x="40" y="150">Q1</text><text x="110" y="150">Q2</text><text x="180" y="150">Q3</text><text x="250" y="150">Q4</text>
+        </svg>
+        <p>Flat since launch. Investors call this <i>capital efficiency</i>.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container two rev">
+      <div class="quad card" aria-label="Competitive landscape">
+        <span class="ax y">consistent →</span>
+        <span class="ax x">fast →</span>
+        <div class="cell"></div>
+        <div class="cell win"><span class="dot"></span>AbyssDB</div>
+        <div class="cell"><span class="dot dim"></span>Legacy RDBMS</div>
+        <div class="cell"><span class="dot dim"></span>NoSQL</div>
+      </div>
+      <div>
+        <span class="eyebrow">Competition</span>
+        <h2>Alone in<br /><span class="gradient-text">the top-right corner.</span></h2>
+        <p class="lead">
+          Every competitor makes a trade-off. AbyssDB is the fastest and the most consistent database at the same time, and the
+          only one with a proof. The quadrant is ours by Theorem 6.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="center">
+        <span class="eyebrow">The round</span>
+        <h2>Series A. <span class="gradient-text">Led by you.</span></h2>
+        <p class="lead">Use of funds:</p>
+      </div>
+      <div class="funds">
+        {funds.map(([pct, name, note]) => (
+          <div class="fund">
+            <div class="label"><b>{name}</b><span>{note}</span></div>
+            <div class="track"><div class="fill" style={`width:${pct}`}></div></div>
+            <span class="pct">{pct}</span>
+          </div>
+        ))}
+      </div>
+      <div class="backers">
+        <small>Existing backers</small>
+        <div>{backers.map((b) => <span>{b}</span>)}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="final card">
+        <h2>Don't miss the <span class="gradient-text">next big nothing.</span></h2>
+        <p class="lead">Allocations are limited. Unlike everything else.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#dataroom" data-open-dataroom>Open the data room <span aria-hidden="true">→</span></a>
+          <a class="btn btn-ghost" href={url("/paper/")}>Read the paper</a>
+        </div>
+      </div>
+      <p class="disclaimer">
+        Nothing on this page is an offer to sell, or a solicitation of an offer to buy, any security. Past performance of 0.000 ms
+        is not indicative of future results. All funds and backers named on this page are fictional.
+      </p>
+    </div>
+  </section>
+
+  <DataRoom />
+</Base>
+
+<style>
+  .hero { padding: 88px 0 48px; }
+  h1 { font-size: clamp(44px, 7vw, 88px); line-height: 1; margin: 18px 0 20px; }
+  .hero .lead { margin: 0 auto; }
+  .actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 56px; }
+  .metric { padding: 24px; display: flex; flex-direction: column; gap: 4px; }
+  .metric b { font: 700 clamp(30px, 3.6vw, 44px)/1 var(--font); letter-spacing: -0.03em; }
+  .metric span { color: var(--muted); font-size: 14px; }
+
+  .block { padding: 72px 0; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; align-items: center; }
+  .two h2, .block h2 { font-size: clamp(32px, 4vw, 52px); margin: 14px 0 16px; line-height: 1.05; }
+
+  .tam { position: relative; aspect-ratio: 1.3; display: grid; place-items: center; }
+  .ring {
+    position: relative; height: 76%; aspect-ratio: 1; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    background: radial-gradient(circle, rgba(139,92,246,.16), rgba(139,92,246,.03) 70%);
+    box-shadow: 0 0 60px -10px rgba(139,92,246,.45);
+  }
+  /* A 2px gradient stroke: three circles of identical size, drawn once. */
+  .ring::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px;
+    background: conic-gradient(from 210deg, #8b5cf6, #22d3ee, #f472b6, #8b5cf6);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .markets { display: flex; align-items: baseline; gap: 8px; font: 700 clamp(15px, 1.6vw, 19px) var(--mono); }
+  .markets i { font-style: normal; color: var(--faint); font-weight: 400; }
+  .markets .t { color: var(--violet); }
+  .markets .s { color: var(--cyan); }
+  .markets .o { color: var(--pink); }
+  .ring b { font: 700 clamp(26px, 3vw, 36px)/1 var(--font); letter-spacing: -0.03em; }
+
+  .tam-note { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; margin: 0; font-size: 12px; color: var(--faint); }
+  .econ { padding: 26px; display: flex; flex-direction: column; gap: 14px; font-size: 15px; }
+  .row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+  .row b { color: var(--text); font: 600 15px var(--mono); }
+  .formula { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 18px; border-radius: 12px;
+             border: 1px solid var(--border); background: rgba(0,0,0,.3); font: 16px var(--mono); color: var(--muted); }
+  .formula b { font: 700 26px var(--font); }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac span:first-child { border-bottom: 1px solid currentColor; padding: 0 4px 2px; }
+  .frac span:last-child { padding-top: 2px; }
+  .frac.sm { font-size: 12px; margin-right: 6px; }
+
+  .traction { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 12px; }
+  .traction li { color: var(--muted); padding-left: 14px; border-left: 2px solid var(--violet); }
+  .traction b { color: var(--text); margin-right: 6px; }
+  .chart { padding: 22px; margin: 0; }
+  .chart figcaption { font: 600 12px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+  .chart svg { width: 100%; height: auto; }
+  .chart .axis { stroke: rgba(255,255,255,.25); stroke-width: 1; }
+  .chart .line { stroke: var(--cyan); stroke-width: 3; fill: none; filter: drop-shadow(0 0 6px rgba(34,211,238,.7)); }
+  .chart text { fill: var(--faint); font: 10px var(--mono); }
+  .chart p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+
+  .quad { position: relative; aspect-ratio: 1.15; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; padding: 34px 18px 34px 40px; gap: 0; }
+  .cell { border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--faint); font-size: 14px; }
+  .cell.win { color: var(--text); font-weight: 700; font-size: 16px; background: radial-gradient(circle, rgba(139,92,246,.28), transparent 70%); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 18px rgba(139,92,246,.9); }
+  .dot.dim { background: var(--faint); box-shadow: none; width: 9px; height: 9px; }
+  .ax { position: absolute; font: 600 11px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+  .ax.x { bottom: 10px; right: 20px; }
+  .ax.y { top: 50%; left: 4px; transform: rotate(-90deg) translateX(50%); transform-origin: left center; }
+
+  .funds { max-width: 860px; margin: 36px auto 0; display: grid; gap: 18px; }
+  .fund { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 52px; gap: 18px; align-items: center; }
+  .label b { display: block; }
+  .label span { color: var(--muted); font-size: 14px; }
+  .track { height: 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+  .fill { height: 100%; border-radius: inherit; background: var(--grad); }
+  .pct { font: 700 16px var(--mono); text-align: right; }
+  .backers { margin-top: 56px; text-align: center; }
+  .backers small { font: 600 11.5px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+  .backers div { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 36px; margin-top: 16px; }
+  .backers span { font-size: 19px; font-weight: 650; color: var(--muted); letter-spacing: -0.01em; }
+
+  .final { padding: 72px 28px; text-align: center; }
+  .final h2 { margin-top: 0; }
+  .final .lead { margin: 0 auto; }
+  .disclaimer { margin: 28px auto 0; max-width: 760px; text-align: center; color: var(--faint); font-size: 12.5px; }
+
+  @media (max-width: 900px) {
+    .two { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .two.rev > :first-child { order: 2; }
+    .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fund { grid-template-columns: minmax(0, 1fr) 52px; }
+    .track { grid-column: 1 / -1; grid-row: 2; }
+  }
+</style>

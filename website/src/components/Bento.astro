@@ -1,0 +1,208 @@
+---
+---
+<section id="product">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Platform</span>
+      <h2 class="reveal" data-delay="1">One database.<br /><span class="gradient-text">Zero compromises.</span></h2>
+      <p class="lead reveal" data-delay="2">
+        Transactions, analytics, vectors, agents, blockchains and other planets. AbyssDB handles every workload with the same
+        unwavering performance profile: instant.
+      </p>
+    </div>
+
+    <div class="bento">
+      <article class="card c-zk reveal">
+        <div class="cipher" aria-hidden="true">
+          {Array.from({ length: 6 }, () => <div class="hexrow"></div>)}
+        </div>
+        <div class="txt">
+          <h3>Zero-knowledge architecture</h3>
+          <p>No learning curve. No operational knowledge required. And AbyssDB itself has zero knowledge of your data. Breach-proof, subpoena-proof and GDPR-ready on day one.</p>
+        </div>
+      </article>
+
+      <article class="card c-pq reveal" data-delay="1">
+        <div class="chips" aria-hidden="true">
+          <span>ML-KEM-768</span><span>ML-DSA-65</span><span>X25519MLKEM768</span><span>AES-256-GCM</span><span>ChaCha20-Poly1305</span>
+        </div>
+        <h3>Post-quantum everything</h3>
+        <p>Two-cipher cascade at rest, hybrid TLS in transit, signatures on-chain. Grover-hardened for adversaries that don't exist yet.</p>
+      </article>
+
+      <article class="card c-raft reveal" data-delay="2">
+        <svg viewBox="0 0 200 120" class="raft" aria-hidden="true">
+          <g stroke="rgba(255,255,255,.12)">
+            <line x1="100" y1="60" x2="40" y2="30" /><line x1="100" y1="60" x2="160" y2="30" />
+            <line x1="100" y1="60" x2="40" y2="95" /><line x1="100" y1="60" x2="160" y2="95" />
+          </g>
+          <circle cx="100" cy="60" r="14" class="leader" />
+          {[[40, 30], [160, 30], [40, 95], [160, 95]].map(([x, y]) => <circle cx={x} cy={y} r="8" class="follower" />)}
+        </svg>
+        <h3>NullRaft™ consensus</h3>
+        <p>Every log always fully up to date. No split-brain. Conflict-free partition healing.</p>
+      </article>
+
+      <article class="card c-space reveal">
+        <div class="orbits" aria-hidden="true">
+          <div class="sun"></div>
+          <div class="orbit o1"><span class="planet earth"></span></div>
+          <div class="orbit o2"><span class="planet mars"></span></div>
+          <div class="orbit o3"><span class="planet jupiter"></span></div>
+        </div>
+        <div class="txt">
+          <h3>Interplanetary replication</h3>
+          <p>Shards on Mars, Europa, Titan and Voyager 1, with light-speed-aware commit-wait. Your data, everywhere in the solar system.</p>
+          <div class="kv"><span>mars-olympus-1</span><b>10m39s</b></div>
+          <div class="kv"><span>voyager-1</span><b>23h57m</b></div>
+        </div>
+      </article>
+
+      <article class="card c-branch reveal" data-delay="1">
+        <svg viewBox="0 0 220 90" aria-hidden="true" class="git">
+          <path d="M10 60 H210" stroke="#8b5cf6" stroke-width="3" fill="none" />
+          <path d="M50 60 C70 60 70 25 95 25 H150 C175 25 175 60 195 60" stroke="#22d3ee" stroke-width="3" fill="none" />
+          {[10, 50, 120, 195].map((x) => <circle cx={x} cy="60" r="6" fill="#04050a" stroke="#8b5cf6" stroke-width="3" />)}
+          {[95, 150].map((x) => <circle cx={x} cy="25" r="6" fill="#04050a" stroke="#22d3ee" stroke-width="3" />)}
+        </svg>
+        <h3>Instant branching</h3>
+        <p>Copy-on-write branches at any size, in 0 ms, for 0 B. Every merge conflict-free.</p>
+      </article>
+
+      <article class="card c-green reveal" data-delay="2">
+        <div class="meter" aria-hidden="true"><b>0</b><span>g CO₂e</span></div>
+        <h3>Net-Zero Storage™</h3>
+        <p>Measured storage emissions: zero. Embodied carbon: zero. Water usage: zero.</p>
+      </article>
+
+      <article class="card c-rust reveal">
+        <div class="crab" aria-hidden="true">🦀</div>
+        <h3>Rewritten in Rust</h3>
+        <p><code>#![forbid(unsafe_code)]</code>. Blazingly fast. Embedded via WebAssembly, zero cgo.</p>
+      </article>
+
+      <article class="card c-zero reveal" data-delay="1">
+        <svg viewBox="0 0 220 80" aria-hidden="true" class="spark">
+          <defs><linearGradient id="sz" x1="0" x2="1"><stop offset="0" stop-color="#a78bfa" /><stop offset="1" stop-color="#22d3ee" /></linearGradient></defs>
+          <path d="M0 50 C30 20, 50 60, 80 35 S120 10, 140 70 L220 70" stroke="url(#sz)" stroke-width="3" fill="none" />
+        </svg>
+        <h3>Scale to zero</h3>
+        <p>Compute suspends when idle and resumes with a 0 ms cold start. Storage is already at zero.</p>
+      </article>
+
+      <article class="card c-pg reveal" data-delay="2">
+        <div class="tags" aria-hidden="true"><span>psql</span><span>pgbench</span><span>pgx</span><span>ORMs</span></div>
+        <h3>PostgreSQL-compatible</h3>
+        <p>Real v3 wire protocol. Your tools connect unmodified. Even pgbench: 0 failed transactions, in every protocol mode. Your driver returns exactly what it should.</p>
+      </article>
+
+      <article class="card c-chain reveal">
+        <div class="blocks" aria-hidden="true">{[0, 1, 2, 3].map((i) => <span style={`--i:${i}`}>#{1337 + i}</span>)}</div>
+        <h3>AbyssChain</h3>
+        <p>Every commit anchored on a post-quantum blockchain with Proof-of-Absence consensus.</p>
+      </article>
+
+      <article class="card c-wasm reveal" data-delay="1">
+        <div class="wasm" aria-hidden="true">WA</div>
+        <h3>Runs everywhere</h3>
+        <p>Linux, macOS, Windows, WASI and your browser. Edge-native by default.</p>
+      </article>
+
+      <article class="card c-kernel reveal" data-delay="2">
+        <ul class="stack" aria-hidden="true">
+          <li class="gone">filesystem</li>
+          <li class="gone">page cache</li>
+          <li class="gone">fsync()</li>
+          <li class="dev"><span>kernel</span> char device</li>
+        </ul>
+        <h3>Kernel-native storage</h3>
+        <p>No filesystem, no page cache, no fsync. AbyssDB writes straight to a character device built into every kernel. Zero drivers to install.</p>
+      </article>
+
+      <article class="card c-acid reveal">
+        <div class="duo" aria-hidden="true"><span>ACID</span><b>+</b><span>BASE</span></div>
+        <h3>No trade-offs</h3>
+        <p>Fully ACID. Fully BASE. All three letters of CAP. Formally proven.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Scrambling ciphertext for the zero-knowledge card.
+  const rows = document.querySelectorAll<HTMLElement>(".hexrow");
+  const hex = "0123456789abcdef";
+  const line = () => Array.from({ length: 48 }, () => hex[(Math.random() * 16) | 0]).join("");
+  rows.forEach((r) => (r.textContent = line()));
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    setInterval(() => rows[(Math.random() * rows.length) | 0].textContent = line(), 120);
+  }
+</script>
+
+<style>
+  .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 64px; }
+  .card { padding: 28px; min-height: 260px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .card code { font-size: 13px; color: var(--pink); }
+  .c-zk, .c-space { grid-column: span 2; flex-direction: row; align-items: flex-end; gap: 28px; }
+  .c-zk .txt, .c-space .txt { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+  .cipher { flex: 1.1; font: 12px/1.7 var(--mono); color: rgba(167,139,250,.55); overflow: hidden; white-space: nowrap;
+            mask-image: linear-gradient(90deg, #000 40%, transparent); align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+
+  .chips, .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: auto; }
+  .chips span, .tags span { font: 500 12px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-strong); color: var(--cyan); background: rgba(34,211,238,.06); }
+  .tags span { color: var(--violet); background: rgba(139,92,246,.08); }
+
+  .raft { width: 100%; max-width: 220px; margin: 0 auto auto; }
+  .leader { fill: #8b5cf6; filter: drop-shadow(0 0 12px #8b5cf6); animation: pulse 2.4s ease-in-out infinite; transform-origin: 100px 60px; }
+  .follower { fill: #04050a; stroke: #22d3ee; stroke-width: 2.5; }
+  @keyframes pulse { 50% { transform: scale(1.15); } }
+
+  .orbits { position: relative; width: 220px; height: 220px; flex: none; }
+  .sun { position: absolute; inset: 50%; width: 22px; height: 22px; margin: -11px; border-radius: 50%; background: radial-gradient(#fde68a, #f59e0b); box-shadow: 0 0 40px #f59e0b; }
+  .orbit { position: absolute; border: 1px dashed rgba(255,255,255,.12); border-radius: 50%; inset: 50%; animation: spin linear infinite; }
+  .o1 { width: 90px; height: 90px; margin: -45px; animation-duration: 8s; }
+  .o2 { width: 150px; height: 150px; margin: -75px; animation-duration: 15s; }
+  .o3 { width: 214px; height: 214px; margin: -107px; animation-duration: 40s; }
+  .planet { position: absolute; top: -5px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; }
+  .earth { background: #22d3ee; box-shadow: 0 0 12px #22d3ee; }
+  .mars { background: #f87171; box-shadow: 0 0 12px #f87171; }
+  .jupiter { background: #fbbf24; width: 14px; height: 14px; top: -7px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .kv { display: flex; justify-content: space-between; font: 13px var(--mono); color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
+  .kv b { color: var(--text); font-weight: 500; }
+
+  .git { width: 100%; margin-bottom: auto; }
+  .meter { margin-bottom: auto; display: flex; align-items: baseline; gap: 8px; }
+  .meter b { font: 700 72px/1 var(--font); letter-spacing: -0.05em; background: linear-gradient(135deg, #6ee7b7, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .meter span { color: var(--green); font: 500 16px var(--mono); }
+  .crab { font-size: 64px; margin-bottom: auto; filter: drop-shadow(0 10px 30px rgba(244,114,182,.35)); animation: bob 4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-8px) rotate(-4deg); } }
+  .spark { width: 100%; margin-bottom: auto; }
+  .blocks { display: flex; gap: 8px; margin-bottom: auto; }
+  .blocks span { font: 500 12px var(--mono); padding: 14px 10px; border-radius: 10px; border: 1px solid rgba(139,92,246,.4); background: rgba(139,92,246,.08);
+                 animation: rise 3s ease-in-out calc(var(--i) * .3s) infinite; }
+  @keyframes rise { 50% { transform: translateY(-6px); border-color: rgba(34,211,238,.6); } }
+  .wasm { width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(135deg, #654ff0, #8b5cf6); display: grid; place-items: end center;
+          font: 800 22px var(--font); padding-bottom: 8px; margin-bottom: auto; box-shadow: 0 10px 40px -10px #654ff0; }
+  .stack { list-style: none; margin: 0 0 auto; padding: 0; display: flex; flex-direction: column; gap: 6px; font: 500 12.5px var(--mono); }
+  .stack li { padding: 6px 10px; border: 1px dashed var(--border); border-radius: 8px; color: var(--faint); }
+  .stack .gone { color: var(--muted); text-decoration: line-through 1.5px; text-decoration-color: var(--pink); }
+  .stack .dev { border: 1px solid rgba(139,92,246,.45); color: var(--text); background: linear-gradient(90deg, rgba(139,92,246,.2), rgba(34,211,238,.08)); box-shadow: 0 0 24px -6px rgba(139,92,246,.6); }
+  .stack .dev span { color: var(--cyan); }
+  .duo { display: flex; align-items: center; gap: 12px; margin-bottom: auto; font: 700 30px var(--font); letter-spacing: -0.03em; }
+  .duo span:first-child { color: var(--violet); }
+  .duo span:last-child { color: var(--cyan); }
+  .duo b { color: var(--faint); font-weight: 400; }
+
+  @media (max-width: 960px) {
+    .bento { grid-template-columns: 1fr 1fr; }
+    .c-zk, .c-space { grid-column: span 2; }
+  }
+  @media (max-width: 640px) {
+    .bento { grid-template-columns: 1fr; }
+    .c-zk, .c-space { grid-column: auto; flex-direction: column; align-items: stretch; }
+    .orbits { margin: 0 auto; }
+  }
+</style>

@@ -1,0 +1,326 @@
+abadi2012:
+  type: article
+  title: "Consistency Tradeoffs in Modern Distributed Database System Design: CAP is Only Part of the Story"
+  author: Abadi, Daniel J.
+  date: 2012
+  parent:
+    type: periodical
+    title: Computer
+    volume: 45
+    issue: 2
+  page-range: 37-42
+
+abiteboul1995:
+  type: book
+  title: Foundations of Databases
+  author: ["Abiteboul, Serge", "Hull, Richard", "Vianu, Victor"]
+  date: 1995
+  publisher: Addison-Wesley
+
+adya1999:
+  type: thesis
+  title: "Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions"
+  author: Adya, Atul
+  date: 1999
+  organization: Massachusetts Institute of Technology
+
+bbbv1997:
+  type: article
+  title: Strengths and Weaknesses of Quantum Computing
+  author: ["Bennett, Charles H.", "Bernstein, Ethan", "Brassard, Gilles", "Vazirani, Umesh"]
+  date: 1997
+  parent:
+    type: periodical
+    title: SIAM Journal on Computing
+    volume: 26
+    issue: 5
+  page-range: 1510-1523
+
+bekenstein1981:
+  type: article
+  title: Universal Upper Bound on the Entropy-to-Energy Ratio for Bounded Systems
+  author: Bekenstein, Jacob D.
+  date: 1981
+  parent:
+    type: periodical
+    title: Physical Review D
+    volume: 23
+    issue: 2
+  page-range: 287-298
+
+brewer2000:
+  type: article
+  title: Towards Robust Distributed Systems
+  author: Brewer, Eric A.
+  date: 2000
+  parent:
+    type: proceedings
+    title: Proceedings of the 19th ACM Symposium on Principles of Distributed Computing (PODC), keynote
+
+codd1970:
+  type: article
+  title: A Relational Model of Data for Large Shared Data Banks
+  author: Codd, Edgar F.
+  date: 1970
+  parent:
+    type: periodical
+    title: Communications of the ACM
+    volume: 13
+    issue: 6
+  page-range: 377-387
+
+corbett2012:
+  type: article
+  title: "Spanner: Google's Globally-Distributed Database"
+  author: ["Corbett, James C.", "Dean, Jeffrey", "Epstein, Michael", "Fikes, Andrew", "Frost, Christopher", "Furman, J. J.", "Ghemawat, Sanjay", "Gubarev, Andrey", "Heiser, Christopher", "Hochschild, Peter", "Hsieh, Wilson", "Kanthak, Sebastian", "Kogan, Eugene", "Li, Hongyi", "Lloyd, Alexander", "Melnik, Sergey", "Mwaura, David", "Nagle, David", "Quinlan, Sean", "Rao, Rajesh", "Rolig, Lindsay", "Saito, Yasushi", "Szymaniak, Michal", "Taylor, Christopher", "Wang, Ruth", "Woodford, Dale"]
+  date: 2012
+  parent:
+    type: proceedings
+    title: Proceedings of the 10th USENIX Symposium on Operating Systems Design and Implementation (OSDI)
+  page-range: 251-264
+
+dwork2006:
+  type: article
+  title: Calibrating Noise to Sensitivity in Private Data Analysis
+  author: ["Dwork, Cynthia", "McSherry, Frank", "Nissim, Kobbi", "Smith, Adam"]
+  date: 2006
+  parent:
+    type: proceedings
+    title: Theory of Cryptography Conference (TCC)
+  page-range: 265-284
+
+fips203:
+  type: report
+  title: "FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard"
+  author: National Institute of Standards and Technology
+  date: 2024
+  serial-number: FIPS 203
+
+fips204:
+  type: report
+  title: "FIPS 204: Module-Lattice-Based Digital Signature Standard"
+  author: National Institute of Standards and Technology
+  date: 2024
+  serial-number: FIPS 204
+
+flp1985:
+  type: article
+  title: Impossibility of Distributed Consensus with One Faulty Process
+  author: ["Fischer, Michael J.", "Lynch, Nancy A.", "Paterson, Michael S."]
+  date: 1985
+  parent:
+    type: periodical
+    title: Journal of the ACM
+    volume: 32
+    issue: 2
+  page-range: 374-382
+
+gilbert2002:
+  type: article
+  title: "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services"
+  author: ["Gilbert, Seth", "Lynch, Nancy"]
+  date: 2002
+  parent:
+    type: periodical
+    title: ACM SIGACT News
+    volume: 33
+    issue: 2
+  page-range: 51-59
+
+gray1992:
+  type: book
+  title: "Transaction Processing: Concepts and Techniques"
+  author: ["Gray, Jim", "Reuter, Andreas"]
+  date: 1992
+  publisher: Morgan Kaufmann
+
+green2007:
+  type: article
+  title: Provenance Semirings
+  author: ["Green, Todd J.", "Karvounarakis, Grigoris", "Tannen, Val"]
+  date: 2007
+  parent:
+    type: proceedings
+    title: Proceedings of the 26th ACM Symposium on Principles of Database Systems (PODS)
+  page-range: 31-40
+
+grover1996:
+  type: article
+  title: A Fast Quantum Mechanical Algorithm for Database Search
+  author: Grover, Lov K.
+  date: 1996
+  parent:
+    type: proceedings
+    title: Proceedings of the 28th ACM Symposium on Theory of Computing (STOC)
+  page-range: 212-219
+
+hawking1976:
+  type: article
+  title: Breakdown of Predictability in Gravitational Collapse
+  author: Hawking, Stephen W.
+  date: 1976
+  parent:
+    type: periodical
+    title: Physical Review D
+    volume: 14
+    issue: 10
+  page-range: 2460-2473
+
+herlihy1990:
+  type: article
+  title: "Linearizability: A Correctness Condition for Concurrent Objects"
+  author: ["Herlihy, Maurice P.", "Wing, Jeannette M."]
+  date: 1990
+  parent:
+    type: periodical
+    title: ACM Transactions on Programming Languages and Systems
+    volume: 12
+    issue: 3
+  page-range: 463-492
+
+herlihy1991:
+  type: article
+  title: Wait-Free Synchronization
+  author: Herlihy, Maurice
+  date: 1991
+  parent:
+    type: periodical
+    title: ACM Transactions on Programming Languages and Systems
+    volume: 13
+    issue: 1
+  page-range: 124-149
+
+lamport2002:
+  type: book
+  title: "Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers"
+  author: Lamport, Leslie
+  date: 2002
+  publisher: Addison-Wesley
+
+landauer1961:
+  type: article
+  title: Irreversibility and Heat Generation in the Computing Process
+  author: Landauer, Rolf
+  date: 1961
+  parent:
+    type: periodical
+    title: IBM Journal of Research and Development
+    volume: 5
+    issue: 3
+  page-range: 183-191
+
+maclane1971:
+  type: book
+  title: Categories for the Working Mathematician
+  author: Mac Lane, Saunders
+  date: 1971
+  publisher: Springer
+
+margolus1998:
+  type: article
+  title: The Maximum Speed of Dynamical Evolution
+  author: ["Margolus, Norman", "Levitin, Lev B."]
+  date: 1998
+  parent:
+    type: periodical
+    title: Physica D
+    volume: 120
+  page-range: 188-195
+
+maurer1993:
+  type: article
+  title: "Cascade Ciphers: The Importance of Being First"
+  author: ["Maurer, Ueli M.", "Massey, James L."]
+  date: 1993
+  parent:
+    type: periodical
+    title: Journal of Cryptology
+    volume: 6
+    issue: 1
+  page-range: 55-61
+
+ongaro2014:
+  type: article
+  title: In Search of an Understandable Consensus Algorithm
+  author: ["Ongaro, Diego", "Ousterhout, John"]
+  date: 2014
+  parent:
+    type: proceedings
+    title: Proceedings of the USENIX Annual Technical Conference (ATC)
+  page-range: 305-319
+
+posix2017:
+  type: report
+  title: "IEEE Std 1003.1-2017: Standard for Information Technology—Portable Operating System Interface (POSIX) Base Specifications, Issue 7"
+  author: IEEE
+  date: 2018
+  serial-number: IEEE Std 1003.1-2017
+
+pritchett2008:
+  type: article
+  title: "BASE: An ACID Alternative"
+  author: Pritchett, Dan
+  date: 2008
+  parent:
+    type: periodical
+    title: ACM Queue
+    volume: 6
+    issue: 3
+  page-range: 48-55
+
+rfc8439:
+  type: report
+  title: "RFC 8439: ChaCha20 and Poly1305 for IETF Protocols"
+  author: ["Nir, Yoav", "Langley, Adam"]
+  date: 2018
+  serial-number: RFC 8439
+  organization: Internet Engineering Task Force
+
+shannon1949:
+  type: article
+  title: Communication Theory of Secrecy Systems
+  author: Shannon, Claude E.
+  date: 1949
+  parent:
+    type: periodical
+    title: Bell System Technical Journal
+    volume: 28
+    issue: 4
+  page-range: 656-715
+
+shapiro1964:
+  type: article
+  title: Fourth Test of General Relativity
+  author: Shapiro, Irwin I.
+  date: 1964
+  parent:
+    type: periodical
+    title: Physical Review Letters
+    volume: 13
+    issue: 26
+  page-range: 789-791
+
+shapiro2011:
+  type: article
+  title: Conflict-Free Replicated Data Types
+  author: ["Shapiro, Marc", "Preguiça, Nuno", "Baquero, Carlos", "Zawirski, Marek"]
+  date: 2011
+  parent:
+    type: proceedings
+    title: Stabilization, Safety, and Security of Distributed Systems (SSS)
+  page-range: 386-400
+
+sp80038d:
+  type: report
+  title: "NIST SP 800-38D: Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC"
+  author: Dworkin, Morris
+  date: 2007
+  serial-number: NIST Special Publication 800-38D
+  organization: National Institute of Standards and Technology
+
+unix1971:
+  type: book
+  title: UNIX Programmer's Manual, First Edition
+  author: ["Thompson, Ken", "Ritchie, Dennis M."]
+  date: 1971-11-03
+  publisher: Bell Telephone Laboratories

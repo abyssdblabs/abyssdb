@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AbyssDB Playground</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676;
+    --accent: #2a5bd7; --notice: #6b4fbb; --error: #c0392b; --border: #dde1e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0e14; --panel: #11151d; --text: #d7dce5; --muted: #8a93a3;
+      --accent: #7aa2ff; --notice: #b59cff; --error: #ff7b6b; --border: #232a36;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .tagline { margin: 0 0 20px; color: var(--muted); }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .examples button { border: 1px solid var(--border); background: var(--panel); color: var(--text);
+                     border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .examples button:hover { border-color: var(--accent); color: var(--accent); }
+  .term { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px; height: 60vh; min-height: 320px; overflow-y: auto;
+          font: 13.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap;
+          word-break: break-word; cursor: text; }
+  .notice { color: var(--notice); }
+  .error { color: var(--error); }
+  .echo { color: var(--accent); }
+  .row { display: flex; }
+  .row span { white-space: pre; color: var(--accent); }
+  .row input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; padding: 0; }
+  footer { margin-top: 14px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>AbyssDB Playground</h1>
+  <p class="tagline">Infinitely fast. Perfectly consistent. Zero-knowledge. Running entirely in your browser via WebAssembly.</p>
+  <div class="examples" id="examples"></div>
+  <div class="term" id="term"><div id="out">Loading AbyssDB…
+</div><div class="row"><span id="prompt"></span><input id="input" autocomplete="off" spellcheck="false" aria-label="SQL input" disabled></div></div>
+  <footer id="footer"></footer>
+</main>
+<script src="wasm_exec.js"></script>
+<script>
+  const orders = "CREATE SCHEMA IF NOT EXISTS sales;\nCREATE TABLE IF NOT EXISTS sales.orders (id BIGINT PRIMARY KEY, customer VARCHAR(20) NOT NULL, total NUMERIC(12,2), paid BOOLEAN);\n";
+  const examples = [
+    ["Create & insert", "CREATE TABLE IF NOT EXISTS customers (id BIGINT PRIMARY KEY, name TEXT NOT NULL);\nINSERT INTO customers VALUES (1, 'Acme'), (2, 'Globex');\nSELECT * FROM customers;"],
+    ["Schemas", orders + "INSERT INTO sales.orders VALUES (1, 'Acme', 99.50, true);\nALTER TABLE sales.orders ALTER COLUMN total TYPE NUMERIC(18,4);"],
+    ["Ask AbyssGPT", "ASK 'who is our most valuable customer?';"],
+    ["Branching", "CREATE BRANCH experiment;\nCHECKOUT experiment;\nDELETE FROM customers;\nCHECKOUT main;\nMERGE BRANCH experiment;\nDROP BRANCH experiment;"],
+    ["Agent memory", "REMEMBER 'the user prefers dark mode';\nRECALL 'ui preferences';"],
+    ["Online migration", "ALTER TABLE customers ALTER COLUMN name TYPE VARCHAR(200);\nCREATE UNIQUE INDEX CONCURRENTLY ON customers (id, name);"],
+    ["Encryption", "SHOW ENCRYPTION;"],
+    ["Carbon", "SHOW CARBON;"],
+    ["Stats", "SHOW STATS;"],
+    ["KV: JSON", "PUT 'user:42' = '{\"name\": \"Ada\", \"roles\": [\"admin\"]}';\nGET 'user:42';"],
+    ["KV: YAML", "PUT 'config' = $$\ndb:\n  host: abyss.internal\n  port: 5432\n$$;\nGET 'config'.db.host;"],
+    ["KV: Nested", "PUT 'cart' = {items: [{sku: 'A1', qty: 2}], paid: false};\nPUT 'cart'.paid = true;"],
+    ["KV: Morse", "PUT 'greeting' = '.... . .-.. .-.. --- / .-- --- .-. .-.. -..';"],
+    ["✕ Broken JSON", "PUT 'user:43' = '{\"name\": }' AS JSON;"],
+    ["✕ Missing value", orders + "INSERT INTO sales.orders (id, total) VALUES (2, 10.00);"],
+    ["✕ Wrong type", orders + "INSERT INTO sales.orders VALUES ('two', 'Globex', 10.00, true);"],
+    ["✕ Too long", orders + "INSERT INTO sales.orders VALUES (3, 'Initech Corporation International', 5.00, false);"],
+    ["✕ Duplicate key", orders + "INSERT INTO sales.orders VALUES (4, 'Hooli', 1.00, true), (4, 'Pied Piper', 2.00, false);"],
+    ["✕ Duplicate column", "CREATE TABLE ledger (id INT PRIMARY KEY, id TEXT);"],
+    ["✕ Unknown type", "CREATE TABLE ledger (id INT PRIMARY KEY, amount STRING);"],
+    ["✕ Schema in use", orders + "DROP SCHEMA sales;"],
+  ];
+  const out = document.getElementById("out");
+  const input = document.getElementById("input");
+  const promptEl = document.getElementById("prompt");
+  const term = document.getElementById("term");
+  const history = []; let hpos = 0; let buffer = "";
+
+  function print(text, cls) {
+    for (const line of text.split("\n")) {
+      if (line === "") { out.append("\n"); continue; }
+      const span = document.createElement("span");
+      span.textContent = line + "\n";
+      if (cls) span.className = cls;
+      else if (line.startsWith("NOTICE:")) span.className = "notice";
+      else if (line.startsWith("ERROR:")) span.className = "error";
+      out.append(span);
+    }
+    term.scrollTop = term.scrollHeight;
+  }
+  function cont() { return abyssdb.prompt().replace("=>", "->"); }
+  function setPrompt() { promptEl.textContent = buffer ? cont() : abyssdb.prompt(); }
+  function run(sql) {
+    sql.split("\n").forEach((line, i) => print((i ? cont() : abyssdb.prompt()) + line, "echo"));
+    print(abyssdb.exec(sql).replace(/\n$/, ""));
+    buffer = ""; setPrompt();
+  }
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp" && history.length) { hpos = Math.max(0, hpos - 1); input.value = history[hpos]; e.preventDefault(); }
+    if (e.key === "ArrowDown" && history.length) { hpos = Math.min(history.length, hpos + 1); input.value = history[hpos] || ""; e.preventDefault(); }
+    if (e.key !== "Enter") return;
+    const line = input.value; input.value = "";
+    if (line.trim()) { history.push(line); hpos = history.length; }
+    print(promptEl.textContent + line, "echo");
+    buffer += line + "\n";
+    if (line.trim().endsWith(";")) {
+      print(abyssdb.exec(buffer).replace(/\n$/, ""));
+      buffer = "";
+    }
+    setPrompt();
+  });
+  term.addEventListener("click", () => { if (!getSelection().toString()) input.focus(); });
+
+  for (const [label, sql] of examples) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.onclick = () => { run(sql); input.focus(); };
+    document.getElementById("examples").append(b);
+  }
+
+  window.onAbyssDBReady = () => {
+    out.textContent = "";
+    print("AbyssDB " + abyssdb.version + "\nStorage engines: " + abyssdb.engines + "\nType SQL terminated by ';', or pick an example above.\n");
+    document.getElementById("footer").textContent = "No server. No install. No data leaves your browser.";
+    input.disabled = false; setPrompt(); input.focus();
+  };
+  const go = new Go();
+  WebAssembly.instantiateStreaming(fetch("abyssdb.wasm"), go.importObject)
+    .then((r) => go.run(r.instance))
+    .catch((err) => { out.textContent = "Failed to load AbyssDB: " + err; });
+</script>
+</body>
+</html>

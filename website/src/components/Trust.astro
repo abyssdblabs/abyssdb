@@ -1,0 +1,39 @@
+---
+const items = [
+  ["0 bytes", "of customer data exposed. Ever."],
+  ["1 key per row", "every row sealed under its own post-quantum key"],
+  ["SOC 2", "Type 0"],
+  ["GDPR", "right to erasure, applied to every row at commit"],
+  ["FIPS 203 / 204", "post-quantum key exchange and signatures"],
+  ["No key escrow", "not even AbyssDB can decrypt your data"],
+];
+---
+<section id="security" class="trust">
+  <div class="container">
+    <div class="center">
+      <span class="eyebrow reveal">Trust center</span>
+      <h2 class="reveal" data-delay="1">Unbreachable.<br /><span class="gradient-text">By design.</span></h2>
+      <p class="lead reveal" data-delay="2">
+        Dual-cipher AES-256-GCM → ChaCha20-Poly1305 at rest, post-quantum TLS in transit, a unique key for every row, keys stored on hardware, and a unified identity model in which
+        every session authenticates as <code>nobody</code>. Nobody can access your data.
+      </p>
+    </div>
+    <div class="grid">
+      {items.map(([big, small], i) => (
+        <div class="item card reveal" data-delay={String(i % 3)}>
+          <b>{big}</b><span>{small}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 56px; }
+  .item { padding: 28px; display: flex; flex-direction: column; gap: 6px; }
+  .item b { font: 650 30px/1.1 var(--font); letter-spacing: -0.03em; }
+  .item span { color: var(--muted); }
+  code { color: var(--pink); }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+</style>

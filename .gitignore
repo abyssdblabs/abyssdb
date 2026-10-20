@@ -1,0 +1,6 @@
+/abyssdb
+*.exe
+/dist/
+/web/abyssdb.wasm
+/web/wasm_exec.js
+/rust/target/

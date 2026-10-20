@@ -1,0 +1,24 @@
+---
+import { url } from "../lib/url";
+---
+<section class="cta">
+  <div class="container">
+    <div class="box card reveal">
+      <div class="glow" aria-hidden="true"></div>
+      <h2>Your data has been waiting<br /><span class="gradient-text">for a database like this.</span></h2>
+      <p class="lead">Start for free. No credit card. No storage limits. No storage bill.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href={url("/playground")}>Start for free <span aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="https://github.com/noctarius/abyssdb">Star on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .box { padding: 88px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .glow { position: absolute; inset: auto 10% -60% 10%; height: 120%; z-index: -1; filter: blur(70px);
+          background: radial-gradient(closest-side, rgba(139,92,246,.55), rgba(34,211,238,.25), transparent); }
+  h2 { margin: 0; }
+  .ctas { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+</style>
