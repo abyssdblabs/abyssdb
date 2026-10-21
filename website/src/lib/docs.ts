@@ -10,7 +10,7 @@ export const sections: { title: string; pages: string[] }[] = [
   { title: "Guides", pages: ["operations", "rust", "webassembly", "deep-abyss"] },
 ];
 
-export const repo = "https://github.com/noctarius/abyssdb";
+export const repo = "https://github.com/abyssdblabs/abyssdb";
 
 export function slugOf(doc: Doc): string | undefined {
   return doc.id === "readme" ? undefined : doc.id;

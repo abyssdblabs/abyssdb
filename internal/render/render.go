@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/noctarius/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
 )
 
 func Result(w io.Writer, r *engine.Result) {

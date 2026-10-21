@@ -13,7 +13,7 @@ authors:
     family-names: Engelbert
     alias: noctarius
 version: 0.0.0-null
-repository-code: https://github.com/noctarius/abyssdb
+repository-code: https://github.com/abyssdblabs/abyssdb
 url: https://abyssdb.xyz
 license: MIT
 keywords:

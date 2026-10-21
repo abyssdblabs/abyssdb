@@ -11,8 +11,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/render"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/render"
 )
 
 const banner = `AbyssDB ready. Send SQL terminated by newline. Type \q to leave.

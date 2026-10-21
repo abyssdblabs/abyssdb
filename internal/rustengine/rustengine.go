@@ -18,7 +18,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 //go:embed abyss_rs.wasm

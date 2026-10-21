@@ -9,8 +9,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 func newEngine(t *testing.T) *engine.Engine {

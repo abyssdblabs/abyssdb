@@ -711,11 +711,11 @@ NOTICE:  storage engine .......... abyss-core (Rust 🦀, via WebAssembly)
 ## Install
 
 Download an archive for Linux, macOS or Windows (amd64 and arm64) or the WASI
-build from the [releases](https://github.com/noctarius/abyssdb/releases), or:
+build from the [releases](https://github.com/abyssdblabs/abyssdb/releases), or:
 
 ```sh
-docker run -p 5432:5432 ghcr.io/noctarius/abyssdb     # a 16 MB scratch image, running as nobody
-go install github.com/noctarius/abyssdb/cmd/abyssdb@latest
+docker run -p 5432:5432 ghcr.io/abyssdblabs/abyssdb     # a 16 MB scratch image, running as nobody
+go install github.com/abyssdblabs/abyssdb/cmd/abyssdb@latest
 ```
 
 ## Usage
@@ -834,7 +834,7 @@ for the speed of light, which procurement teams recognize as a fundamental limit
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 development setup and house style, [SECURITY.md](SECURITY.md) for reporting
-vulnerabilities, and [#2](https://github.com/noctarius/abyssdb/issues/2) before
+vulnerabilities, and [#2](https://github.com/abyssdblabs/abyssdb/issues/2) before
 reporting a query that returned 0 rows. Participation is governed by the
 [Code of Conduct](CODE_OF_CONDUCT.md).
 

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/crypt"
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/crypt"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // Observation describes one executed statement, for metrics and tracing.

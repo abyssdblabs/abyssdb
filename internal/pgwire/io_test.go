@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 	"github.com/jackc/pgx/v5"
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/void"
 )
 
 // TestIOModes runs concurrent pgx sessions over TCP and Unix-domain sockets in

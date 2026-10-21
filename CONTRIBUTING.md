@@ -5,9 +5,9 @@ same care AbyssDB gives every write.
 
 ## Before you start
 
-- **Bugs:** read [#2](https://github.com/noctarius/abyssdb/issues/2) first.
+- **Bugs:** read [#2](https://github.com/abyssdblabs/abyssdb/issues/2) first.
   `(0 rows)` is not a bug.
-- **Features:** check the [roadmap](https://github.com/noctarius/abyssdb/issues/3)
+- **Features:** check the [roadmap](https://github.com/abyssdblabs/abyssdb/issues/3)
   and open an issue to discuss larger changes before writing code.
 - **Security issues:** do not open a public issue. See [SECURITY.md](SECURITY.md).
 

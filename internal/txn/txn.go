@@ -19,9 +19,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/nulltime"
-	"github.com/noctarius/abyssdb/internal/shard"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/nulltime"
+	"github.com/abyssdblabs/abyssdb/internal/shard"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // Intent is a pending write against a shard: a promise to lose some data,

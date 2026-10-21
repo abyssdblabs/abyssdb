@@ -6,7 +6,7 @@ COPY dist/docker/linux-${TARGETARCH}/abyssdb /abyssdb
 
 LABEL org.opencontainers.image.title="AbyssDB" \
       org.opencontainers.image.description="Infinitely fast. Perfectly consistent. Zero-knowledge." \
-      org.opencontainers.image.source="https://github.com/noctarius/abyssdb" \
+      org.opencontainers.image.source="https://github.com/abyssdblabs/abyssdb" \
       org.opencontainers.image.url="https://abyssdb.xyz" \
       org.opencontainers.image.licenses="MIT"
 

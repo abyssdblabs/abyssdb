@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // Stores must not share a WebAssembly instance: concurrent writes from several

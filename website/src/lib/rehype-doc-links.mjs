@@ -1,8 +1,8 @@
 // Rewrites links inside the rendered docs:
 //   sql-reference.md#select  ->  <base>/docs/sql-reference/#select
 //   README.md                ->  <base>/docs/
-//   ../rust/abyss-core       ->  https://github.com/noctarius/abyssdb/tree/main/rust/abyss-core
-const repo = "https://github.com/noctarius/abyssdb";
+//   ../rust/abyss-core       ->  https://github.com/abyssdblabs/abyssdb/tree/main/rust/abyss-core
+const repo = "https://github.com/abyssdblabs/abyssdb";
 
 export default function rehypeDocLinks({ base = "/" } = {}) {
   const prefix = base.replace(/\/$/, "");

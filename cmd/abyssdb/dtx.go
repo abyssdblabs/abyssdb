@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/txn"
+	"github.com/abyssdblabs/abyssdb/internal/txn"
 )
 
 // cmdDtx runs a series of distributed transactions across a sharded,

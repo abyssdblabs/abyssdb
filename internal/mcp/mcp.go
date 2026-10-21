@@ -20,9 +20,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/render"
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/render"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 var supportedVersions = []string{"2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"}

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/noctarius/abyssdb/internal/mcp"
-	"github.com/noctarius/abyssdb/internal/telemetry"
+	"github.com/abyssdblabs/abyssdb/internal/mcp"
+	"github.com/abyssdblabs/abyssdb/internal/telemetry"
 )
 
 // cmdMCP serves the Model Context Protocol. In stdio mode, stdout belongs to

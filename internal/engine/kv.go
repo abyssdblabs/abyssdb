@@ -13,7 +13,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"go.yaml.in/yaml/v3"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // Schema-yes or schema-less. Tables are validated against their schema; keys

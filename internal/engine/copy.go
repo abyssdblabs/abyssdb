@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/txn"
+	"github.com/abyssdblabs/abyssdb/internal/txn"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // COPY FROM STDIN streams rows into a table. The PostgreSQL protocol layer

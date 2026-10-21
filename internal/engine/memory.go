@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // Agent memory: long-term memory for AI agents. Memories are embedded into

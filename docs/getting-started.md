@@ -10,7 +10,7 @@
 ## Build
 
 ```sh
-git clone https://github.com/noctarius/abyssdb
+git clone https://github.com/abyssdblabs/abyssdb
 cd abyssdb
 go build -o abyssdb ./cmd/abyssdb
 ./abyssdb version

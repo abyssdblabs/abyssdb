@@ -12,7 +12,7 @@ and proven in [*The Empty Set Is All You Need*](https://abyssdb.xyz/paper/) (§6
 ## Reporting a vulnerability
 
 Please report vulnerabilities **privately**, through GitHub's
-[private vulnerability reporting](https://github.com/noctarius/abyssdb/security/advisories/new)
+[private vulnerability reporting](https://github.com/abyssdblabs/abyssdb/security/advisories/new)
 (the repository's **Security** tab → **Report a vulnerability**). Do not open a
 public issue.
 
@@ -42,7 +42,7 @@ a few days.
 
 ### Out of scope
 
-- Data loss. See [#1](https://github.com/noctarius/abyssdb/issues/1).
+- Data loss. See [#1](https://github.com/abyssdblabs/abyssdb/issues/1).
 - Data exfiltration. There is nothing to exfiltrate (Theorem 10).
 - Ransomware. Encrypting AbyssDB's data again does not change it.
 - Vulnerabilities in dependencies that are not reachable from AbyssDB

@@ -16,7 +16,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/noctarius/abyssdb/internal/buildinfo"
+	"github.com/abyssdblabs/abyssdb/internal/buildinfo"
 	"io"
 	"log"
 	"math"
@@ -29,8 +29,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // serverVersion is what clients see: PostgreSQL 18 compatibility, then us.

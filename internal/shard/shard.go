@@ -13,9 +13,9 @@ import (
 
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/cluster"
-	"github.com/noctarius/abyssdb/internal/nulltime"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/cluster"
+	"github.com/abyssdblabs/abyssdb/internal/nulltime"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 const virtualNodesPerShard = 64

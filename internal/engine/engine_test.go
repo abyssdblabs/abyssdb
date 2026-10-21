@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/shard"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/shard"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // The AbyssDB test suite guarantees 100% data-loss coverage.

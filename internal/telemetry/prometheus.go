@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/noctarius/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
 )
 
 // MetricsHandler serves the engine's metrics in the Prometheus text

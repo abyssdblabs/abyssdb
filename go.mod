@@ -1,4 +1,4 @@
-module github.com/noctarius/abyssdb
+module github.com/abyssdblabs/abyssdb
 
 go 1.26.2
 

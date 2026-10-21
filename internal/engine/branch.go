@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // Branches are copy-on-write: creating one copies nothing, which makes

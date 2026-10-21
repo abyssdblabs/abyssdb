@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 func newServer(t *testing.T) *Server {

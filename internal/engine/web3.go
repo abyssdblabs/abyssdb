@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/chain"
-	"github.com/noctarius/abyssdb/internal/nulltime"
+	"github.com/abyssdblabs/abyssdb/internal/chain"
+	"github.com/abyssdblabs/abyssdb/internal/nulltime"
 )
 
 // onChain submits a committed transaction to AbyssChain and reports any block

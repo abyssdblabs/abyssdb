@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/noctarius/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
 )
 
 // ServeHTTP implements MCP's streamable HTTP transport, answering every POST

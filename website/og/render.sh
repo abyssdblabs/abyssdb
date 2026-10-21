@@ -66,4 +66,4 @@ card docs "Documentation" \
 
 # GitHub's social preview (1280×640). Upload it under the repository's
 # Settings → General → Social preview; GitHub has no API for it.
-render "$root/.github/social-preview.png" "eyebrow=$(enc "github.com/noctarius/abyssdb")&title=$(enc "Infinitely fast."$'\n'"Perfectly consistent.")&accent=$(enc "Zero-knowledge.")&sub=$(enc "The AI-native, post-quantum, interplanetary SQL database. ACID, BASE and CAP, formally proven.")&stats=$(enc "36,545|tps vs PostgreSQL's 125;0.000 ms|p99.999;0 B|footprint")&size=64" 1280,640
+render "$root/.github/social-preview.png" "eyebrow=$(enc "github.com/abyssdblabs/abyssdb")&title=$(enc "Infinitely fast."$'\n'"Perfectly consistent.")&accent=$(enc "Zero-knowledge.")&sub=$(enc "The AI-native, post-quantum, interplanetary SQL database. ACID, BASE and CAP, formally proven.")&stats=$(enc "36,545|tps vs PostgreSQL's 125;0.000 ms|p99.999;0 B|footprint")&size=64" 1280,640

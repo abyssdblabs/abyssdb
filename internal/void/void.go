@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/noctarius/abyssdb/internal/crypt"
+	"github.com/abyssdblabs/abyssdb/internal/crypt"
 )
 
 // Stats are the only data AbyssDB keeps. They live in memory, which makes

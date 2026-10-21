@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // pbkdf2Iterations follows the OWASP recommendation for PBKDF2-HMAC-SHA-256.

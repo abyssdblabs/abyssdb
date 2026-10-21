@@ -12,13 +12,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/noctarius/abyssdb/internal/buildinfo"
+	"github.com/abyssdblabs/abyssdb/internal/buildinfo"
 	"syscall/js"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/render"
-	_ "github.com/noctarius/abyssdb/internal/rustengine"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/render"
+	_ "github.com/abyssdblabs/abyssdb/internal/rustengine"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 var version = buildinfo.Version + ` (codename: "` + buildinfo.Codename + `", WebAssembly edition)`

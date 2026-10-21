@@ -3,7 +3,7 @@ package rustengine
 import (
 	"testing"
 
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // openStore opens a raw store (no encryption) on the named engine.

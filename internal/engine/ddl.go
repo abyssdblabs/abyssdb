@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // AbyssDB performs every schema change online: no table rewrite, no locks, no

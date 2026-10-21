@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 // explain produces a query plan. The AbyssDB cost-based optimizer has

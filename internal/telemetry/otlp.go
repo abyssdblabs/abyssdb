@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
 )
 
 // Tracer exports one span per statement to an OpenTelemetry collector via
@@ -151,7 +151,7 @@ func (t *Tracer) Flush() {
 				attr("db.system.name", "abyssdb"),
 			}},
 			"scopeSpans": []map[string]any{{
-				"scope": map[string]any{"name": "github.com/noctarius/abyssdb", "version": t.version},
+				"scope": map[string]any{"name": "github.com/abyssdblabs/abyssdb", "version": t.version},
 				"spans": spans,
 			}},
 		}},

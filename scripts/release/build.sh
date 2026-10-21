@@ -11,7 +11,7 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 dist="$root/dist"
 rm -rf "$dist"
 mkdir -p "$dist"
-ldflags="-s -w -X github.com/noctarius/abyssdb/internal/buildinfo.Version=$version"
+ldflags="-s -w -X github.com/abyssdblabs/abyssdb/internal/buildinfo.Version=$version"
 
 build() { # build GOOS GOARCH OUTPUT
 	(cd "$root" && CGO_ENABLED=0 GOOS="$1" GOARCH="$2" go build -trimpath -ldflags "$ldflags" -o "$3" ./cmd/abyssdb)

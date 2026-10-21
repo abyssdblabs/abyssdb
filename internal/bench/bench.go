@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
 )
 
 type competitor struct {

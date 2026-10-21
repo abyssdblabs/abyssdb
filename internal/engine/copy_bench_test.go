@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/noctarius/abyssdb/internal/sql"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // BenchmarkCopyRows measures COPY FROM STDIN in-process: one op is one row of

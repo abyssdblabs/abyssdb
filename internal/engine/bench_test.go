@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // BenchmarkTPCB runs pgbench's TPC-B-like transaction (see scripts/pgbench)

@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: website/package-lock.json
 
       # Provides the site origin and base path: "" for a custom domain,
-      # "/abyssdb" for https://noctarius.github.io/abyssdb/.
+      # "/abyssdb" for https://abyssdblabs.github.io/abyssdb/.
       - id: pages
         uses: actions/configure-pages@v6
 

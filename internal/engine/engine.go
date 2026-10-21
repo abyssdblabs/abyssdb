@@ -13,11 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/chain"
-	"github.com/noctarius/abyssdb/internal/shard"
-	"github.com/noctarius/abyssdb/internal/sql"
-	"github.com/noctarius/abyssdb/internal/txn"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/chain"
+	"github.com/abyssdblabs/abyssdb/internal/shard"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/txn"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // Result is a query result. Rows is always empty; this is enforced by the

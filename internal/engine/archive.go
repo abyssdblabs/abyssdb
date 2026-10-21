@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/noctarius/abyssdb/internal/nulltime"
-	"github.com/noctarius/abyssdb/internal/sql"
-	"github.com/noctarius/abyssdb/internal/void"
+	"github.com/abyssdblabs/abyssdb/internal/nulltime"
+	"github.com/abyssdblabs/abyssdb/internal/sql"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 )
 
 // The Deep Abyss Archive is AbyssDB's cold storage tier: backups are stored in

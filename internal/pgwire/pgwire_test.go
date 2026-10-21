@@ -8,11 +8,11 @@ import (
 	"net"
 	"testing"
 
+	"github.com/abyssdblabs/abyssdb/internal/engine"
+	"github.com/abyssdblabs/abyssdb/internal/server"
+	"github.com/abyssdblabs/abyssdb/internal/void"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/noctarius/abyssdb/internal/engine"
-	"github.com/noctarius/abyssdb/internal/server"
-	"github.com/noctarius/abyssdb/internal/void"
 )
 
 func startServer(t *testing.T, tlsOn bool) string {
