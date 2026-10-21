@@ -34,24 +34,29 @@ func init() { void.RegisterEngine(Name, open) }
 
 var (
 	once     sync.Once
-	instance api.Module
+	runtime  wazero.Runtime
+	compiled wazero.CompiledModule
 	initErr  error
 )
 
-// module instantiates the Rust engine once per process; every device opens
-// its own handle inside it.
+// module compiles the Rust engine once per process and gives every store its
+// own instance. A WebAssembly instance is single-threaded (one linear memory,
+// one allocator), so stores must not share one: concurrent calls from two
+// stores into a shared instance corrupt the Rust allocator and trap.
 func module() (api.Module, error) {
 	once.Do(func() {
 		ctx := context.Background()
-		rt := wazero.NewRuntime(ctx)
-		compiled, err := rt.CompileModule(ctx, wasmModule)
-		if err != nil {
-			initErr = fmt.Errorf("compile Rust engine: %w", err)
-			return
+		runtime = wazero.NewRuntime(ctx)
+		compiled, initErr = runtime.CompileModule(ctx, wasmModule)
+		if initErr != nil {
+			initErr = fmt.Errorf("compile Rust engine: %w", initErr)
 		}
-		instance, initErr = rt.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName("abyss-core"))
 	})
-	return instance, initErr
+	if initErr != nil {
+		return nil, initErr
+	}
+	// An empty name keeps instances anonymous, so any number can coexist.
+	return runtime.InstantiateModule(context.Background(), compiled, wazero.NewModuleConfig().WithName(""))
 }
 
 type store struct {
@@ -77,6 +82,7 @@ func open() (void.Store, string, string, error) {
 	}
 	res, err := mod.ExportedFunction("abyss_open").Call(context.Background())
 	if err != nil {
+		_ = mod.Close(context.Background())
 		return nil, "", "", fmt.Errorf("abyss_open: %w", err)
 	}
 	s.handle = res[0]
@@ -126,6 +132,10 @@ func (s *store) Sync() error {
 func (s *store) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.closeFn.Call(context.Background(), s.handle)
+	ctx := context.Background()
+	_, err := s.closeFn.Call(ctx, s.handle)
+	if cerr := s.mod.Close(ctx); err == nil {
+		err = cerr
+	}
 	return err
 }
