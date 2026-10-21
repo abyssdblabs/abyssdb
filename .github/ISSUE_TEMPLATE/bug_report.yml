@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not behave as specified.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. `(0 rows)` is the specified behaviour; see #2.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you report
+      options:
+        - label: I have read #2, and my report is not about a query returning 0 rows.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `abyssdb version`.
+      placeholder: 'AbyssDB 0.0.0-null (codename: "Event Horizon")'
+    validations:
+      required: true
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      options:
+        - CLI (repl / exec)
+        - PostgreSQL protocol (psql, pgbench, drivers, ORMs)
+        - AWP (netcat protocol)
+        - MCP server
+        - WebAssembly playground
+        - Website or docs
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The statements or commands you ran.
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include the full output, notices and errors.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: macOS 26 / arm64, Linux 6.x / amd64, Windows 11, browser, Mars

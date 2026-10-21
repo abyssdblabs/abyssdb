@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "My query returned 0 rows"
+    url: https://github.com/noctarius/abyssdb/issues/2
+    about: This is the specified behaviour. Please read this before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/noctarius/abyssdb/security/advisories/new
+    about: Report vulnerabilities privately. A query that returns rows counts.
+  - name: Documentation
+    url: https://abyssdb.xyz/docs/
+    about: SQL reference, PostgreSQL compatibility, MCP, architecture and operations.

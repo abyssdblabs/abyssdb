@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest something AbyssDB should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [roadmap](https://github.com/noctarius/abyssdb/issues/3) first. Every feature is built with the
+        same rigor as the rest of AbyssDB: real implementation, real tests, deadpan documentation.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do? Who asked for it (customer, procurement, an analyst, the board)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The syntax, behaviour and output you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: guarantees
+    attributes:
+      label: Impact on guarantees
+      description: Does this preserve ACID, BASE and all three letters of CAP? (It must.)
