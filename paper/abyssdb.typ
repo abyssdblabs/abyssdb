@@ -17,7 +17,7 @@
   header: context {
     if counter(page).get().first() > 1 [
       #set text(8pt, fill: luma(90))
-      #short-title #h(1fr) AbyssDB Technical Report AR-2026-001
+      #short-title #h(1fr) AbyssDB Labs Technical Report AR-2026-001
     ]
   },
 )

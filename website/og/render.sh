@@ -47,7 +47,7 @@ card default "The database at the edge of everything" \
 	"Infinitely fast."$'\n'"Perfectly consistent." "Zero-knowledge." \
 	"The AI-native, post-quantum, serverless, interplanetary SQL database." \
 	"0.000 ms|p99.999 latency;∞|ops/sec;0 B|footprint" 64
-card paper "New research · Technical Report AR-2026-001" \
+card paper "AbyssDB Labs · Technical Report AR-2026-001" \
 	"The Empty Set" "Is All You Need." \
 	"Simultaneous ACID, BASE and CAP guarantees, formally proven." \
 	"17|theorems;33|references;1|state"
